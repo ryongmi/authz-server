@@ -1,0 +1,3 @@
+export * from './service-visible-role.controller.js';
+export * from './service-visible-role.module.js';
+export * from './service-visible-role.service.js';
