@@ -1,13 +1,13 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-// import cookieParser from 'cookie-parser';
+import { DefaultConfig } from '@common/interfaces/index.js';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 
 import { HttpExceptionFilter } from '@krgeobuk/core/filters';
 import { LoggingInterceptor } from '@krgeobuk/core/interceptors';
 
-import { DefaultConfig } from '@common/interfaces/index.js';
+// import cookieParser from 'cookie-parser';
 
 // import { SeederService } from './seeder/seeder.service';
 

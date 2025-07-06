@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+
 import { ServiceVisibleRoleService } from './service-visible-role.service';
 
 describe('ServiceVisibleRoleService', () => {

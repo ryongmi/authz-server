@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -14,7 +15,8 @@ const entitiesPath = join(__dirname, '/../**/*.entity{.ts,.js}');
   imports: [TypeOrmModule.forRootAsync(createTypeOrmConfig([entitiesPath]))],
   exports: [TypeOrmModule],
 })
-export class DatabaseModule {}
+export class DatabaseModule {
+}
 
 // import { Module } from "@nestjs/common";
 // import { ConfigService } from "@nestjs/config";
