@@ -3,7 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { PermissionEntity } from './entities/permission.entity.js';
 import { PermissionController } from './permission.controller.js';
-import { PermissionRepository } from './permission.repositoty.js';
+import { PermissionRepository } from './permission.repository.js';
 import { PermissionService } from './permission.service.js';
 
 @Module({

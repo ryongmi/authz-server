@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
+
 import { EntityManager, FindOptionsWhere, In, UpdateResult } from 'typeorm';
 
 import { RolePermissionEntity } from './entities/role-permission.entity.js';
-import { RolePermissionRepository } from './role-permission.repositoty.js';
+import { RolePermissionRepository } from './role-permission.repository.js';
 
 interface Filter {
-  serviceId?: string;
   roleId?: string;
+  permissionId?: string;
 }
 
 @Injectable()
@@ -16,16 +17,16 @@ export class RolePermissionService {
     private readonly rolePermissionRepo: RolePermissionRepository
   ) {}
 
-  async findByServiceId(serviceId: string): Promise<RolePermissionEntity[]> {
-    return this.rolePermissionRepo.find({ where: { serviceId } });
+  async findByPermissionId(permissionId: string): Promise<RolePermissionEntity[]> {
+    return this.rolePermissionRepo.find({ where: { permissionId } });
   }
 
   async findByRoleId(roleId: string): Promise<RolePermissionEntity[]> {
     return this.rolePermissionRepo.find({ where: { roleId } });
   }
 
-  async findByServiceIds(serviceIds: string[]): Promise<RolePermissionEntity[]> {
-    return this.rolePermissionRepo.find({ where: { serviceId: In(serviceIds) } });
+  async findByPermissionIds(permissionIds: string[]): Promise<RolePermissionEntity[]> {
+    return this.rolePermissionRepo.find({ where: { permissionId: In(permissionIds) } });
   }
 
   async findByRoleIds(roleIds: string[]): Promise<RolePermissionEntity[]> {
@@ -35,7 +36,7 @@ export class RolePermissionService {
   async findByAnd(filter: Filter = {}): Promise<RolePermissionEntity[]> {
     const where: FindOptionsWhere<RolePermissionEntity> = {};
 
-    if (filter.serviceId) where.serviceId = filter.serviceId;
+    if (filter.permissionId) where.permissionId = filter.permissionId;
     if (filter.roleId) where.roleId = filter.roleId;
 
     // ✅ 필터 없으면 전체 조회
@@ -47,11 +48,11 @@ export class RolePermissionService {
   }
 
   async findByOr(filter: Filter = {}): Promise<RolePermissionEntity[]> {
-    const { serviceId, roleId } = filter;
+    const { permissionId, roleId } = filter;
 
     const where: FindOptionsWhere<RolePermissionEntity>[] = [];
 
-    if (serviceId) where.push({ serviceId });
+    if (permissionId) where.push({ permissionId });
     if (roleId) where.push({ roleId });
 
     // ✅ 필터 없으면 전체 조회

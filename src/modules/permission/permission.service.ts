@@ -1,16 +1,16 @@
 import { Injectable } from '@nestjs/common';
+
 import { EntityManager, FindOptionsWhere, In, UpdateResult } from 'typeorm';
 
 // import type { PaginatedResult } from '@krgeobuk/core/interfaces';
 // import type { ListQuery } from '@krgeobuk/user/interfaces';
 
 import { PermissionEntity } from './entities/permission.entity.js';
-import { PermissionRepository } from './permission.repositoty.js';
+import { PermissionRepository } from './permission.repository.js';
 
-interface RoleFilter {
-  name?: string;
+interface PermissionFilter {
+  action?: string;
   description?: string;
-  priority?: number;
   serviceId?: string;
 }
 
@@ -37,12 +37,11 @@ export class PermissionService {
     return this.permissionRepo.find({ where: { serviceId: In(serviceIds) } });
   }
 
-  async findByAnd(filter: RoleFilter = {}): Promise<PermissionEntity[]> {
+  async findByAnd(filter: PermissionFilter = {}): Promise<PermissionEntity[]> {
     const where: FindOptionsWhere<PermissionEntity> = {};
 
-    if (filter.name) where.name = filter.name;
+    if (filter.action) where.action = filter.action;
     if (filter.description) where.description = filter.description;
-    if (filter.priority) where.priority = filter.priority;
     if (filter.serviceId) where.serviceId = filter.serviceId;
 
     // ✅ 필터 없으면 전체 조회
@@ -53,14 +52,13 @@ export class PermissionService {
     return this.permissionRepo.find({ where });
   }
 
-  async findByOr(filter: RoleFilter = {}): Promise<PermissionEntity[]> {
-    const { name, description, priority, serviceId } = filter;
+  async findByOr(filter: PermissionFilter = {}): Promise<PermissionEntity[]> {
+    const { action, description, serviceId } = filter;
 
     const where: FindOptionsWhere<PermissionEntity>[] = [];
 
-    if (name) where.push({ name });
+    if (action) where.push({ action });
     if (description) where.push({ description });
-    if (priority) where.push({ priority });
     if (serviceId) where.push({ serviceId });
 
     // ✅ 필터 없으면 전체 조회

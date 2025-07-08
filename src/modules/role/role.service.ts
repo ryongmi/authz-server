@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource, EntityManager, FindOptionsWhere, In, UpdateResult } from 'typeorm';
-// import { EntityManager } from 'typeorm';
 
-// import type { PaginatedResult } from '@krgeobuk/core/interfaces';
-// import type { ListQuery } from '@krgeobuk/user/interfaces';
+import { DataSource, EntityManager, FindOptionsWhere, In, UpdateResult } from 'typeorm';
+
+import type { PaginatedResult } from '@krgeobuk/core/interfaces';
 
 import { RoleEntity } from './entities/role.entity.js';
-import { RoleRepository } from './role.repositoty.js';
+import { RoleRepository } from './role.repository.js';
+import { RoleSearchQueryDto } from './dtos/role-search-query.dto.js';
 
 interface RoleFilter {
   name?: string;
@@ -22,13 +22,9 @@ export class RoleService {
     private readonly roleRepo: RoleRepository
   ) {}
 
-  // async searchRoles(query: SearchQuery): Promise<PaginatedResult<SearchResult>> {
-  //   return this.roleRepo.search(query);
-  // }
-
-  // async getRoles(query: SearchQuery): Promise<PaginatedResult<SearchResult>> {
-  //   return this.roleRepo.search(query);
-  // }
+  async searchRoles(query: RoleSearchQueryDto): Promise<PaginatedResult<RoleEntity>> {
+    return this.roleRepo.searchRoles(query);
+  }
 
   async findById(id: string): Promise<RoleEntity | null> {
     return this.roleRepo.findOneById(id);

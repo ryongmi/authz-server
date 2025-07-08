@@ -6,84 +6,124 @@ import {
   HttpCode,
   Param,
   Patch,
+  Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
-// import { Request, Response } from 'express';
 
 import { Serialize } from '@krgeobuk/core/decorators';
 
-// import {
-//   SearchQueryDto,
-//   ChangePasswordDto,
-//   UpdateMyProfileDto,
-//   SearchResultDto,
-//   DetailDto,
-// } from '@krgeobuk/role/dtos';
-// import { AuthError } from '@krgeobuk/role/exception';
-// import { AuthResponse } from '@krgeobuk/role/response';
 import {
   SwaggerApiTags,
-  // SwaggerApiBody,
-  // SwaggerApiOperation,
-  // SwaggerApiOkResponse,
-  // SwaggerApiErrorResponse,
+  SwaggerApiOperation,
+  SwaggerApiOkResponse,
+  SwaggerApiCreatedResponse,
+  SwaggerApiBearerAuth,
 } from '@krgeobuk/swagger/decorators';
 import { JwtPayload } from '@krgeobuk/jwt/interfaces';
 import { CurrentJwt } from '@krgeobuk/jwt/decorators';
 import { AccessTokenGuard } from '@krgeobuk/jwt/guards';
 
 import type { PaginatedResult } from '@krgeobuk/core/interfaces';
-// import type { PaginatedResult } from '@krgeobuk/core/interfaces';
 
 import { RoleService } from './role.service.js';
-
-// import { TransactionInterceptor } from '@krgeobuk/core/interceptors';
-// import { Serialize, TransactionManager } from '@krgeobuk/core/decorators';
+import {
+  CreateRoleDto,
+  UpdateRoleDto,
+  RoleSearchQueryDto,
+  RoleResponseDto,
+} from './dtos/index.js';
 
 @SwaggerApiTags({ tags: ['roles'] })
 @Controller('roles')
 export class RoleController {
   constructor(private readonly roleService: RoleService) {}
 
-  // 전체 Role 목록
-  // @Get()
-  // @HttpCode(UserResponse.USER_SEARCH_SUCCESS.statusCode)
-  // @SwaggerApiBearerAuth()
-  // @SwaggerApiOperation({ summary: '유저 목록 조회' })
-  // @SwaggerApiPaginatedResponse({
-  //   status: UserResponse.USER_SEARCH_SUCCESS.statusCode,
-  //   description: UserResponse.USER_SEARCH_SUCCESS.message,
-  //   dto: SearchResultDto,
-  // })
-  // @SwaggerApiErrorResponse({
-  //   status: UserError.USER_SEARCH_ERROR.statusCode,
-  //   description: UserError.USER_SEARCH_ERROR.message,
-  // })
-  // @UseGuards(AccessTokenGuard)
-  // @Serialize({
-  //   dto: PaginatedSearchResultDto,
-  //   ...UserResponse.USER_SEARCH_SUCCESS,
-  // })
-  // async searchRoles(@Query() query: SearchQueryDto): Promise<PaginatedSearchResultDto> {
-  //   return this.roleService.searchRoles(query);
-  // }
+@Get()
+  @HttpCode(200)
+  @SwaggerApiBearerAuth()
+  @SwaggerApiOperation({ summary: '역할 목록 조회' })
+  @SwaggerApiOkResponse({
+    description: '역할 목록 조회 성공',
+    type: RoleResponseDto,
+    isArray: true,
+  })
+  @UseGuards(AccessTokenGuard)
+  @Serialize({ dto: RoleResponseDto })
+  async searchRoles(
+    @Query() query: RoleSearchQueryDto,
+  ): Promise<PaginatedResult<RoleResponseDto>> {
+    return this.roleService.searchRoles(query);
+  }
 
-  // // Role 생성
-  // @Post()
-  // create(@Body() dto: CreateRoleDto) {
-  //   return this.roleService.create(dto);
-  // }
+@Post()
+  @HttpCode(201)
+  @SwaggerApiBearerAuth()
+  @SwaggerApiOperation({ summary: '역할 생성' })
+  @SwaggerApiCreatedResponse({
+    description: '역할 생성 성공',
+    type: RoleResponseDto,
+  })
+  @UseGuards(AccessTokenGuard)
+  @Serialize({ dto: RoleResponseDto })
+  async createRole(
+    @Body() createRoleDto: CreateRoleDto,
+    @CurrentJwt() jwt: JwtPayload,
+  ): Promise<RoleResponseDto> {
+    return this.roleService.createRole(createRoleDto);
+  }
 
-  // // 특정 Role 조회
-  // @Get(':id')
-  // findOne(@Param('id') id: string) {
-  //   return this.roleService.findOne(id);
-  // }
+@Get(':id')
+  @HttpCode(200)
+  @SwaggerApiBearerAuth()
+  @SwaggerApiOperation({ summary: '특정 역할 조회' })
+  @SwaggerApiOkResponse({
+    description: '역할 조회 성공',
+    type: RoleResponseDto,
+  })
+  @UseGuards(AccessTokenGuard)
+  @Serialize({ dto: RoleResponseDto })
+  async findRoleById(@Param('id') id: string): Promise<RoleResponseDto> {
+    return this.roleService.findById(id);
+  }
 
-  // // 특정 Role 삭제
-  // @Delete(':id')
-  // remove(@Param('id') id: string) {
-  //   return this.roleService.remove(id);
-  // }
+@Patch(':id')
+  @HttpCode(200)
+  @SwaggerApiBearerAuth()
+  @SwaggerApiOperation({ summary: '역할 수정' })
+  @SwaggerApiOkResponse({
+    description: '역할 수정 성공',
+    type: RoleResponseDto,
+  })
+  @UseGuards(AccessTokenGuard)
+  @Serialize({ dto: RoleResponseDto })
+  async updateRole(
+    @Param('id') id: string,
+    @Body() updateRoleDto: UpdateRoleDto,
+    @CurrentJwt() jwt: JwtPayload,
+  ): Promise<RoleResponseDto> {
+    const existingRole = await this.roleService.findById(id);
+    if (!existingRole) {
+      throw new Error('Role not found');
+    }
+    
+    Object.assign(existingRole, updateRoleDto);
+    await this.roleService.updateRole(existingRole);
+    
+    return this.roleService.findById(id);
+  }
+
+  @Delete(':id')
+  @HttpCode(200)
+  @SwaggerApiBearerAuth()
+  @SwaggerApiOperation({ summary: '역할 삭제' })
+  @SwaggerApiOkResponse({ description: '역할 삭제 성공' })
+  @UseGuards(AccessTokenGuard)
+  async deleteRole(
+    @Param('id') id: string,
+    @CurrentJwt() jwt: JwtPayload,
+  ): Promise<{ message: string }> {
+    await this.roleService.deleteRole(id);
+    return { message: 'Role deleted successfully' };
+  }
 }

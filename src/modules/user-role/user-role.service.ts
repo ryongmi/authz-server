@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+
 import { DataSource, EntityManager, FindOptionsWhere, In, UpdateResult } from 'typeorm';
 // import { EntityManager } from 'typeorm';
 
@@ -6,7 +7,7 @@ import { DataSource, EntityManager, FindOptionsWhere, In, UpdateResult } from 't
 // import type { ListQuery } from '@krgeobuk/user/interfaces';
 
 import { UserRoleEntity } from './entities/user-role.entity.js';
-import { UserRoleRepository } from './user-role.repositoty.js';
+import { UserRoleRepository } from './user-role.repository.js';
 
 interface Filter {
   userId?: string;

@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
+
 import { EntityManager, FindOptionsWhere, In, UpdateResult } from 'typeorm';
 
 import { ServiceVisibleRoleEntity } from './entities/service-visible-role.entity.js';
-import { ServiceVisibleRoleRepository } from './service-visible-role.repositoty.js';
+import { ServiceVisibleRoleRepository } from './service-visible-role.repository.js';
 
 interface Filter {
   serviceId?: string;
