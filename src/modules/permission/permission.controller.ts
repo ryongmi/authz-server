@@ -31,16 +31,13 @@ import {
   PermissionSearchQueryDto,
   PermissionDetailDto,
   PermissionSearchResultDto,
+  CreatePermissionDto,
+  UpdatePermissionDto,
 } from '@krgeobuk/permission/dtos';
 import type { PaginatedResult } from '@krgeobuk/core/interfaces';
 
 import { PermissionEntity } from './entities/permission.entity.js';
 import { PermissionService } from './permission.service.js';
-import {
-  CreatePermissionDto,
-  UpdatePermissionDto,
-  PermissionResponseDto,
-} from './dtos/index.js';
 
 // import { TransactionInterceptor } from '@krgeobuk/core/interceptors';
 // import { Serialize, TransactionManager } from '@krgeobuk/core/decorators';

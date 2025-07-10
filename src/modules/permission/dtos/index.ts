@@ -1,4 +1,1 @@
-export { CreatePermissionDto } from './create-permission.dto.js';
-export { UpdatePermissionDto } from './update-permission.dto.js';
-export { PermissionSearchQueryDto } from './permission-search-query.dto.js';
-export { PermissionResponseDto } from './permission-response.dto.js';
+// DTO들은 @krgeobuk/permission/dtos 공통패키지에서 가져옵니다.

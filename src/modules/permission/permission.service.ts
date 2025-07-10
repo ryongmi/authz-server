@@ -8,9 +8,11 @@ import type { PaginatedResult } from '@krgeobuk/core/interfaces';
 
 import { PermissionEntity } from './entities/permission.entity.js';
 import { PermissionRepository } from './permission.repository.js';
-import { PermissionSearchQueryDto } from './dtos/permission-search-query.dto.js';
-import { CreatePermissionDto } from './dtos/create-permission.dto.js';
-import { UpdatePermissionDto } from './dtos/update-permission.dto.js';
+import {
+  PermissionSearchQueryDto,
+  CreatePermissionDto,
+  UpdatePermissionDto,
+} from '@krgeobuk/permission/dtos';
 
 @Injectable()
 export class PermissionService {
