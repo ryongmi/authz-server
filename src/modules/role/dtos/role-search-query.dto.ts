@@ -2,27 +2,9 @@ import { IsOptional, IsString, IsNumber, IsUUID } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class RoleSearchQueryDto {
-  @ApiProperty({
-    description: '페이지 번호',
-    example: 1,
-    required: false,
-  })
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  page?: number = 1;
+import { PaginateBaseDto } from '@krgeobuk/core/dtos';
 
-  @ApiProperty({
-    description: '페이지 크기',
-    example: 10,
-    required: false,
-  })
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  limit?: number = 10;
-
+export class RoleSearchQueryDto extends PaginateBaseDto {
   @ApiProperty({
     description: '역할 이름으로 검색',
     example: 'admin',

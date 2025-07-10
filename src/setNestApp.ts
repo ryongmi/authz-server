@@ -1,13 +1,13 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-import { DefaultConfig } from '@common/interfaces/index.js';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
+import cookieParser from 'cookie-parser';
 
 import { HttpExceptionFilter } from '@krgeobuk/core/filters';
 import { LoggingInterceptor } from '@krgeobuk/core/interceptors';
 
-import cookieParser from 'cookie-parser';
+import { DefaultConfig } from '@common/interfaces/index.js';
 
 // import { SeederService } from './seeder/seeder.service';
 
@@ -55,3 +55,4 @@ export function setNestApp(
   // const seederService = app.get(SeederService);
   // await seederService.seed();
 }
+

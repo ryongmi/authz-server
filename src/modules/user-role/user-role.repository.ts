@@ -2,9 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
 import { BaseRepository } from '@krgeobuk/core/repositories';
-// import type { PaginatedResult } from '@krgeobuk/core/interfaces';
+import type { PaginatedResult } from '@krgeobuk/core/interfaces';
 
 import { UserRoleEntity } from './entities/user-role.entity.js';
+import { UserRoleSearchQueryDto } from './dtos/user-role-search-query.dto.js';
 
 @Injectable()
 export class UserRoleRepository extends BaseRepository<UserRoleEntity> {
@@ -34,9 +35,40 @@ export class UserRoleRepository extends BaseRepository<UserRoleEntity> {
   //     return await this.userRepo.save(user);
   //   }
   /**
-   * 모든 엔티티를 조회합니다.
-   * @returns 모든 엔티티 배열
+   * 사용자-역할 관계를 검색합니다.
+   * @param query 검색 조건 및 페이지 정보
+   * @returns 페이지네이션된 사용자-역할 목록
    */
+  async searchUserRoles(query: UserRoleSearchQueryDto): Promise<PaginatedResult<UserRoleEntity>> {
+    const { page = 1, limit = 30, sortOrder = 'DESC', sortBy = 'userId', userId, roleId } = query;
+    
+    const skip = (page - 1) * limit;
+    const queryBuilder = this.createQueryBuilder('userRole');
+
+    if (userId) {
+      queryBuilder.andWhere('userRole.userId = :userId', { userId });
+    }
+    if (roleId) {
+      queryBuilder.andWhere('userRole.roleId = :roleId', { roleId });
+    }
+
+    queryBuilder
+      .orderBy(`userRole.${sortBy}`, sortOrder)
+      .skip(skip)
+      .take(limit);
+
+    const [items, total] = await queryBuilder.getManyAndCount();
+
+    return {
+      items,
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  // 기존 주석 코드
   // async findAllWithFilters(query: ListQuery): Promise<PaginatedResult<Partial<UserRole>>> {
   //   const {
   //     email,

@@ -6,68 +6,204 @@ import {
   HttpCode,
   Param,
   Patch,
+  Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
-// import { Request, Response } from 'express';
 
 import { Serialize } from '@krgeobuk/core/decorators';
-
-// import {
-//   SearchQueryDto,
-//   ChangePasswordDto,
-//   UpdateMyProfileDto,
-//   SearchResultDto,
-//   DetailDto,
-// } from '@krgeobuk/role/dtos';
-// import { AuthError } from '@krgeobuk/role/exception';
-// import { AuthResponse } from '@krgeobuk/role/response';
 import {
   SwaggerApiTags,
-  // SwaggerApiBody,
-  // SwaggerApiOperation,
-  // SwaggerApiOkResponse,
-  // SwaggerApiErrorResponse,
+  SwaggerApiOperation,
+  SwaggerApiBearerAuth,
+  SwaggerApiBody,
+  SwaggerApiParam,
+  SwaggerApiOkResponse,
+  SwaggerApiPaginatedResponse,
+  SwaggerApiErrorResponse,
 } from '@krgeobuk/swagger/decorators';
 import { JwtPayload } from '@krgeobuk/jwt/interfaces';
 import { CurrentJwt } from '@krgeobuk/jwt/decorators';
 import { AccessTokenGuard } from '@krgeobuk/jwt/guards';
-
+import { PermissionResponse } from '@krgeobuk/permission/response';
+import { PermissionError } from '@krgeobuk/permission/exception';
+import {
+  PermissionSearchQueryDto,
+  PermissionDetailDto,
+  PermissionSearchResultDto,
+} from '@krgeobuk/permission/dtos';
 import type { PaginatedResult } from '@krgeobuk/core/interfaces';
-// import type { PaginatedResult } from '@krgeobuk/core/interfaces';
 
+import { PermissionEntity } from './entities/permission.entity.js';
 import { PermissionService } from './permission.service.js';
+import {
+  CreatePermissionDto,
+  UpdatePermissionDto,
+  PermissionResponseDto,
+} from './dtos/index.js';
 
 // import { TransactionInterceptor } from '@krgeobuk/core/interceptors';
 // import { Serialize, TransactionManager } from '@krgeobuk/core/decorators';
 
 @SwaggerApiTags({ tags: ['permissions'] })
+@SwaggerApiBearerAuth()
 @Controller('permissions')
 export class PermissionController {
   constructor(private readonly permissionService: PermissionService) {}
 
-  // @Get()
-  // getAll(@Query('serviceId') serviceId?: string) {
-  //   return this.permissionService.getAll(serviceId);
-  // }
+  @Get()
+  @HttpCode(PermissionResponse.FETCH_SUCCESS.statusCode)
+  @SwaggerApiOperation({
+    summary: '권한 목록 조회',
+    description: '권한 목록을 검색 조건에 따라 조회합니다.',
+  })
+  @SwaggerApiPaginatedResponse({
+    status: PermissionResponse.FETCH_SUCCESS.statusCode,
+    description: PermissionResponse.FETCH_SUCCESS.message,
+    dto: PermissionSearchResultDto,
+  })
+  @SwaggerApiErrorResponse({
+    status: PermissionError.PERMISSION_FETCH_ERROR.statusCode,
+    description: PermissionError.PERMISSION_FETCH_ERROR.message,
+  })
+  @UseGuards(AccessTokenGuard)
+  @Serialize({
+    dto: PermissionSearchResultDto,
+    ...PermissionResponse.FETCH_SUCCESS,
+  })
+  async getPermissions(
+    @Query() query: PermissionSearchQueryDto,
+    @CurrentJwt() jwt: JwtPayload
+  ): Promise<PaginatedResult<PermissionEntity>> {
+    return this.permissionService.searchPermissions(query);
+  }
 
-  // @Get(':id')
-  // getOne(@Param('id') id: string) {
-  //   return this.permissionService.getOne(id);
-  // }
+  @Get(':id')
+  @HttpCode(PermissionResponse.FETCH_SUCCESS.statusCode)
+  @SwaggerApiOperation({ summary: '권한 상세 조회', description: 'ID로 특정 권한을 조회합니다.' })
+  @SwaggerApiParam({
+    name: 'id',
+    type: String,
+    description: '권한 ID',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @SwaggerApiOkResponse({
+    status: PermissionResponse.FETCH_SUCCESS.statusCode,
+    description: PermissionResponse.FETCH_SUCCESS.message,
+    dto: PermissionDetailDto,
+  })
+  @SwaggerApiErrorResponse({
+    status: PermissionError.PERMISSION_NOT_FOUND.statusCode,
+    description: PermissionError.PERMISSION_NOT_FOUND.message,
+  })
+  @SwaggerApiErrorResponse({
+    status: PermissionError.PERMISSION_FETCH_ERROR.statusCode,
+    description: PermissionError.PERMISSION_FETCH_ERROR.message,
+  })
+  @UseGuards(AccessTokenGuard)
+  @Serialize({
+    dto: PermissionDetailDto,
+    ...PermissionResponse.FETCH_SUCCESS,
+  })
+  async getPermission(
+    @Param('id') id: string,
+    @CurrentJwt() jwt: JwtPayload
+  ): Promise<PermissionEntity> {
+    return this.permissionService.findByIdOrFail(id);
+  }
 
-  // @Post()
-  // create(@Body() dto: CreatePermissionDto) {
-  //   return this.permissionService.create(dto);
-  // }
+  @Post()
+  @HttpCode(PermissionResponse.CREATE_SUCCESS.statusCode)
+  @SwaggerApiOperation({ summary: '권한 생성', description: '새로운 권한을 생성합니다.' })
+  @SwaggerApiBody({ dto: CreatePermissionDto, description: '권한 생성 데이터' })
+  @SwaggerApiOkResponse({
+    status: PermissionResponse.CREATE_SUCCESS.statusCode,
+    description: PermissionResponse.CREATE_SUCCESS.message,
+    dto: PermissionDetailDto,
+  })
+  @SwaggerApiErrorResponse({
+    status: PermissionError.PERMISSION_CREATE_ERROR.statusCode,
+    description: PermissionError.PERMISSION_CREATE_ERROR.message,
+  })
+  @SwaggerApiErrorResponse({
+    status: PermissionError.PERMISSION_ALREADY_EXISTS.statusCode,
+    description: PermissionError.PERMISSION_ALREADY_EXISTS.message,
+  })
+  @UseGuards(AccessTokenGuard)
+  @Serialize({
+    dto: PermissionDetailDto,
+    ...PermissionResponse.CREATE_SUCCESS,
+  })
+  async createPermission(
+    @Body() dto: CreatePermissionDto,
+    @CurrentJwt() jwt: JwtPayload
+  ): Promise<PermissionEntity> {
+    return this.permissionService.createPermission(dto);
+  }
 
-  // @Patch(':id')
-  // update(@Param('id') id: string, @Body() dto: UpdatePermissionDto) {
-  //   return this.permissionService.update(id, dto);
-  // }
+  @Patch(':id')
+  @HttpCode(PermissionResponse.UPDATE_SUCCESS.statusCode)
+  @SwaggerApiOperation({ summary: '권한 수정', description: '기존 권한을 수정합니다.' })
+  @SwaggerApiParam({
+    name: 'id',
+    type: String,
+    description: '권한 ID',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @SwaggerApiBody({ dto: UpdatePermissionDto, description: '권한 수정 데이터' })
+  @SwaggerApiOkResponse({
+    status: PermissionResponse.UPDATE_SUCCESS.statusCode,
+    description: PermissionResponse.UPDATE_SUCCESS.message,
+    dto: PermissionDetailDto,
+  })
+  @SwaggerApiErrorResponse({
+    status: PermissionError.PERMISSION_NOT_FOUND.statusCode,
+    description: PermissionError.PERMISSION_NOT_FOUND.message,
+  })
+  @SwaggerApiErrorResponse({
+    status: PermissionError.PERMISSION_UPDATE_ERROR.statusCode,
+    description: PermissionError.PERMISSION_UPDATE_ERROR.message,
+  })
+  @UseGuards(AccessTokenGuard)
+  @Serialize({
+    dto: PermissionDetailDto,
+    ...PermissionResponse.UPDATE_SUCCESS,
+  })
+  async updatePermission(
+    @Param('id') id: string,
+    @Body() dto: UpdatePermissionDto,
+    @CurrentJwt() jwt: JwtPayload
+  ): Promise<PermissionEntity> {
+    return this.permissionService.updatePermission(id, dto);
+  }
 
-  // @Delete(':id')
-  // remove(@Param('id') id: string) {
-  //   return this.permissionService.remove(id);
-  // }
+  @Delete(':id')
+  @HttpCode(PermissionResponse.DELETE_SUCCESS.statusCode)
+  @SwaggerApiOperation({ summary: '권한 삭제', description: '권한을 소프트 삭제합니다.' })
+  @SwaggerApiParam({
+    name: 'id',
+    type: String,
+    description: '권한 ID',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @SwaggerApiOkResponse({
+    status: PermissionResponse.DELETE_SUCCESS.statusCode,
+    description: PermissionResponse.DELETE_SUCCESS.message,
+  })
+  @SwaggerApiErrorResponse({
+    status: PermissionError.PERMISSION_NOT_FOUND.statusCode,
+    description: PermissionError.PERMISSION_NOT_FOUND.message,
+  })
+  @SwaggerApiErrorResponse({
+    status: PermissionError.PERMISSION_DELETE_ERROR.statusCode,
+    description: PermissionError.PERMISSION_DELETE_ERROR.message,
+  })
+  @UseGuards(AccessTokenGuard)
+  @Serialize({
+    ...PermissionResponse.DELETE_SUCCESS,
+  })
+  async deletePermission(@Param('id') id: string, @CurrentJwt() jwt: JwtPayload): Promise<void> {
+    await this.permissionService.deletePermission(id);
+  }
 }
+

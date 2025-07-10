@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, HttpException } from '@nestjs/common';
 
 import { DataSource, EntityManager, FindOptionsWhere, In, UpdateResult } from 'typeorm';
 
 import type { PaginatedResult } from '@krgeobuk/core/interfaces';
+import { RoleException } from '@krgeobuk/role/exception';
 
 import { RoleEntity } from './entities/role.entity.js';
 import { RoleRepository } from './role.repository.js';
@@ -28,6 +29,16 @@ export class RoleService {
 
   async findById(id: string): Promise<RoleEntity | null> {
     return this.roleRepo.findOneById(id);
+  }
+
+  async findByIdOrFail(id: string): Promise<RoleEntity> {
+    const role = await this.roleRepo.findOneById(id);
+    
+    if (!role) {
+      throw RoleException.roleNotFound();
+    }
+    
+    return role;
   }
 
   async findByServiceIds(serviceIds: string[]): Promise<RoleEntity[]> {
@@ -88,21 +99,56 @@ export class RoleService {
     attrs: Partial<RoleEntity>,
     transactionManager?: EntityManager
   ): Promise<RoleEntity> {
-    const roleEntity = new RoleEntity();
+    try {
+      const roleEntity = new RoleEntity();
 
-    Object.assign(roleEntity, attrs);
+      Object.assign(roleEntity, attrs);
 
-    return this.roleRepo.saveEntity(roleEntity, transactionManager);
+      return await this.roleRepo.saveEntity(roleEntity, transactionManager);
+    } catch (error: unknown) {
+      // 중복 키 에러나 다른 DB 에러 처리
+      throw RoleException.roleCreateError();
+    }
   }
 
   async updateRole(
-    roleEntity: RoleEntity,
+    id: string,
+    attrs: Partial<RoleEntity>,
     transactionManager?: EntityManager
-  ): Promise<UpdateResult> {
-    return this.roleRepo.updateEntity(roleEntity, transactionManager);
+  ): Promise<RoleEntity> {
+    try {
+      const role = await this.findByIdOrFail(id);
+
+      Object.assign(role, attrs);
+
+      await this.roleRepo.updateEntity(role, transactionManager);
+      
+      return role;
+    } catch (error: unknown) {
+      // findByIdOrFail에서 발생한 HttpException은 그대로 전파
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      
+      // 다른 DB 에러는 업데이트 에러로 처리
+      throw RoleException.roleUpdateError();
+    }
   }
 
   async deleteRole(id: string): Promise<UpdateResult> {
-    return this.roleRepo.softDelete(id);
+    try {
+      // 역할 존재 여부 확인
+      await this.findByIdOrFail(id);
+      
+      return await this.roleRepo.softDelete(id);
+    } catch (error: unknown) {
+      // findByIdOrFail에서 발생한 HttpException은 그대로 전파
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      
+      // 다른 DB 에러는 삭제 에러로 처리
+      throw RoleException.roleDeleteError();
+    }
   }
 }

@@ -1,18 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, HttpException } from '@nestjs/common';
 
 import { EntityManager, FindOptionsWhere, In, UpdateResult } from 'typeorm';
 
-// import type { PaginatedResult } from '@krgeobuk/core/interfaces';
-// import type { ListQuery } from '@krgeobuk/user/interfaces';
+import { PermissionException } from '@krgeobuk/permission/exception';
+import type { PermissionFilter } from '@krgeobuk/permission/interfaces';
+import type { PaginatedResult } from '@krgeobuk/core/interfaces';
 
 import { PermissionEntity } from './entities/permission.entity.js';
 import { PermissionRepository } from './permission.repository.js';
-
-interface PermissionFilter {
-  action?: string;
-  description?: string;
-  serviceId?: string;
-}
+import { PermissionSearchQueryDto } from './dtos/permission-search-query.dto.js';
+import { CreatePermissionDto } from './dtos/create-permission.dto.js';
+import { UpdatePermissionDto } from './dtos/update-permission.dto.js';
 
 @Injectable()
 export class PermissionService {
@@ -21,16 +19,24 @@ export class PermissionService {
     private readonly permissionRepo: PermissionRepository
   ) {}
 
-  // async searchRoles(query: SearchQuery): Promise<PaginatedResult<SearchResult>> {
-  //   return this.roleRepo.search(query);
-  // }
-
-  // async getRoles(query: SearchQuery): Promise<PaginatedResult<SearchResult>> {
-  //   return this.roleRepo.search(query);
-  // }
+  async searchPermissions(
+    query: PermissionSearchQueryDto
+  ): Promise<PaginatedResult<PermissionEntity>> {
+    return this.permissionRepo.searchPermissions(query);
+  }
 
   async findById(id: string): Promise<PermissionEntity | null> {
     return this.permissionRepo.findOneById(id);
+  }
+
+  async findByIdOrFail(id: string): Promise<PermissionEntity> {
+    const permission = await this.permissionRepo.findOneById(id);
+
+    if (!permission) {
+      throw PermissionException.permissionNotFound();
+    }
+
+    return permission;
   }
 
   async findByServiceIds(serviceIds: string[]): Promise<PermissionEntity[]> {
@@ -86,24 +92,60 @@ export class PermissionService {
   // }
 
   async createPermission(
-    attrs: Partial<PermissionEntity>,
+    dto: CreatePermissionDto,
     transactionManager?: EntityManager
   ): Promise<PermissionEntity> {
-    const permissionEntity = new PermissionEntity();
+    try {
+      const permissionEntity = new PermissionEntity();
 
-    Object.assign(permissionEntity, attrs);
+      Object.assign(permissionEntity, dto);
 
-    return this.permissionRepo.saveEntity(permissionEntity, transactionManager);
+      return await this.permissionRepo.saveEntity(permissionEntity, transactionManager);
+    } catch (error) {
+      // 중복 키 에러나 다른 DB 에러 처리
+      throw PermissionException.permissionCreateError();
+    }
   }
 
   async updatePermission(
-    permissionEntity: PermissionEntity,
+    id: string,
+    dto: UpdatePermissionDto,
     transactionManager?: EntityManager
-  ): Promise<UpdateResult> {
-    return this.permissionRepo.updateEntity(permissionEntity, transactionManager);
+  ): Promise<PermissionEntity> {
+    try {
+      const permission = await this.findByIdOrFail(id);
+
+      Object.assign(permission, dto);
+
+      await this.permissionRepo.updateEntity(permission, transactionManager);
+
+      return permission;
+    } catch (error) {
+      // findByIdOrFail에서 발생한 HttpException은 그대로 전파
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      // 다른 DB 에러는 업데이트 에러로 처리
+      throw PermissionException.permissionUpdateError();
+    }
   }
 
   async deletePermission(id: string): Promise<UpdateResult> {
-    return this.permissionRepo.softDelete(id);
+    try {
+      // 권한 존재 여부 확인
+      await this.findByIdOrFail(id);
+
+      return await this.permissionRepo.softDelete(id);
+    } catch (error) {
+      // findByIdOrFail에서 발생한 HttpException은 그대로 전파
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      // 다른 DB 에러는 삭제 에러로 처리
+      throw PermissionException.permissionDeleteError();
+    }
   }
 }
+

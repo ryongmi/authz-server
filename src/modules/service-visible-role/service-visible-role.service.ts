@@ -2,8 +2,12 @@ import { Injectable } from '@nestjs/common';
 
 import { EntityManager, FindOptionsWhere, In, UpdateResult } from 'typeorm';
 
+import type { PaginatedResult } from '@krgeobuk/core/interfaces';
+
 import { ServiceVisibleRoleEntity } from './entities/service-visible-role.entity.js';
 import { ServiceVisibleRoleRepository } from './service-visible-role.repository.js';
+import { ServiceVisibleRoleSearchQueryDto } from './dtos/service-visible-role-search-query.dto.js';
+import { AssignServiceVisibleRoleDto } from './dtos/assign-service-visible-role.dto.js';
 
 interface Filter {
   serviceId?: string;
@@ -16,6 +20,10 @@ export class ServiceVisibleRoleService {
     // private readonly dataSource: DataSource,
     private readonly svrRepo: ServiceVisibleRoleRepository
   ) {}
+
+  async searchServiceVisibleRoles(query: ServiceVisibleRoleSearchQueryDto): Promise<PaginatedResult<ServiceVisibleRoleEntity>> {
+    return this.svrRepo.searchServiceVisibleRoles(query);
+  }
 
   async findByServiceId(serviceId: string): Promise<ServiceVisibleRoleEntity[]> {
     return this.svrRepo.find({ where: { serviceId } });
@@ -63,25 +71,38 @@ export class ServiceVisibleRoleService {
     return this.svrRepo.find({ where });
   }
 
-  async createServiceVisibleRole(
-    attrs: Partial<ServiceVisibleRoleEntity>,
+  async assignServiceVisibleRole(
+    dto: AssignServiceVisibleRoleDto,
     transactionManager?: EntityManager
   ): Promise<ServiceVisibleRoleEntity> {
-    const svrEntity = new ServiceVisibleRoleEntity();
+    // 이미 할당된 관계인지 확인
+    const existing = await this.svrRepo.findOne({
+      where: { serviceId: dto.serviceId, roleId: dto.roleId }
+    });
 
-    Object.assign(svrEntity, attrs);
+    if (existing) {
+      throw new Error('Service visible role already assigned');
+    }
+
+    const svrEntity = new ServiceVisibleRoleEntity();
+    Object.assign(svrEntity, dto);
 
     return this.svrRepo.saveEntity(svrEntity, transactionManager);
   }
 
-  async updateServiceVisibleRole(
-    svrEntity: ServiceVisibleRoleEntity,
+  async removeServiceVisibleRole(
+    serviceId: string, 
+    roleId: string,
     transactionManager?: EntityManager
-  ): Promise<UpdateResult> {
-    return this.svrRepo.updateEntity(svrEntity, transactionManager);
-  }
+  ): Promise<void> {
+    const serviceVisibleRole = await this.svrRepo.findOne({
+      where: { serviceId, roleId }
+    });
 
-  async deleteServiceVisibleRole(id: string): Promise<UpdateResult> {
-    return this.svrRepo.softDelete(id);
+    if (!serviceVisibleRole) {
+      throw new Error('Service visible role not found');
+    }
+
+    await this.svrRepo.remove(serviceVisibleRole);
   }
 }

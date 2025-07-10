@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
 
 import { DataSource, EntityManager, FindOptionsWhere, In, UpdateResult } from 'typeorm';
-// import { EntityManager } from 'typeorm';
 
-// import type { PaginatedResult } from '@krgeobuk/core/interfaces';
-// import type { ListQuery } from '@krgeobuk/user/interfaces';
+import type { PaginatedResult } from '@krgeobuk/core/interfaces';
 
 import { UserRoleEntity } from './entities/user-role.entity.js';
 import { UserRoleRepository } from './user-role.repository.js';
+import { UserRoleSearchQueryDto } from './dtos/user-role-search-query.dto.js';
+import { AssignUserRoleDto } from './dtos/assign-user-role.dto.js';
 
 interface Filter {
   userId?: string;
@@ -20,6 +20,10 @@ export class UserRoleService {
     private readonly dataSource: DataSource,
     private readonly userRoleRepo: UserRoleRepository
   ) {}
+
+  async searchUserRoles(query: UserRoleSearchQueryDto): Promise<PaginatedResult<UserRoleEntity>> {
+    return this.userRoleRepo.searchUserRoles(query);
+  }
 
   async findByUserId(userId: string): Promise<UserRoleEntity[]> {
     return this.userRoleRepo.find({ where: { userId } });
@@ -67,25 +71,38 @@ export class UserRoleService {
     return this.userRoleRepo.find({ where });
   }
 
-  async createUserRole(
-    attrs: Partial<UserRoleEntity>,
+  async assignUserRole(
+    dto: AssignUserRoleDto,
     transactionManager?: EntityManager
   ): Promise<UserRoleEntity> {
-    const userRoleEntity = new UserRoleEntity();
+    // 이미 할당된 역할인지 확인
+    const existing = await this.userRoleRepo.findOne({
+      where: { userId: dto.userId, roleId: dto.roleId }
+    });
 
-    Object.assign(userRoleEntity, attrs);
+    if (existing) {
+      throw new Error('User role already assigned');
+    }
+
+    const userRoleEntity = new UserRoleEntity();
+    Object.assign(userRoleEntity, dto);
 
     return this.userRoleRepo.saveEntity(userRoleEntity, transactionManager);
   }
 
-  async updateUserRole(
-    userRoleEntity: UserRoleEntity,
+  async removeUserRole(
+    userId: string, 
+    roleId: string,
     transactionManager?: EntityManager
-  ): Promise<UpdateResult> {
-    return this.userRoleRepo.updateEntity(userRoleEntity, transactionManager);
-  }
+  ): Promise<void> {
+    const userRole = await this.userRoleRepo.findOne({
+      where: { userId, roleId }
+    });
 
-  async deleteUserRole(id: string): Promise<UpdateResult> {
-    return this.userRoleRepo.softDelete(id);
+    if (!userRole) {
+      throw new Error('User role not found');
+    }
+
+    await this.userRoleRepo.remove(userRole);
   }
 }

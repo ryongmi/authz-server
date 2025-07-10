@@ -37,6 +37,8 @@
     "@krgeobuk/oauth": "^1.0.0",
     "@krgeobuk/shared": "^1.0.0",
     "@krgeobuk/swagger": "^1.0.0",
+    "@krgeobuk/permission": "^1.0.0",
+    "@krgeobuk/role": "^1.0.0",
     "@krgeobuk/user": "^1.0.0",
     "@nestjs/common": "^10.0.0",
     "@nestjs/config": "^4.0.2",

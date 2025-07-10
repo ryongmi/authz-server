@@ -41,7 +41,7 @@ export class RoleRepository extends BaseRepository<RoleEntity> {
    * @returns 페이지네이션된 역할 목록
    */
   async searchRoles(query: RoleSearchQueryDto): Promise<PaginatedResult<RoleEntity>> {
-    const { page = 1, limit = 10, name, description, priority, serviceId } = query;
+    const { page = 1, limit = 30, sortOrder = 'DESC', sortBy = 'createdAt', name, description, priority, serviceId } = query;
     
     const skip = (page - 1) * limit;
     const queryBuilder = this.createQueryBuilder('role');
@@ -60,21 +60,18 @@ export class RoleRepository extends BaseRepository<RoleEntity> {
     }
 
     queryBuilder
-      .orderBy('role.priority', 'ASC')
-      .addOrderBy('role.createdAt', 'DESC')
+      .orderBy(`role.${sortBy}`, sortOrder)
       .skip(skip)
       .take(limit);
 
-    const [data, total] = await queryBuilder.getManyAndCount();
+    const [items, total] = await queryBuilder.getManyAndCount();
 
     return {
-      data,
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
+      items,
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
     };
   }
 }

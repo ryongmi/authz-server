@@ -2,8 +2,12 @@ import { Injectable } from '@nestjs/common';
 
 import { EntityManager, FindOptionsWhere, In, UpdateResult } from 'typeorm';
 
+import type { PaginatedResult } from '@krgeobuk/core/interfaces';
+
 import { RolePermissionEntity } from './entities/role-permission.entity.js';
 import { RolePermissionRepository } from './role-permission.repository.js';
+import { RolePermissionSearchQueryDto } from './dtos/role-permission-search-query.dto.js';
+import { AssignRolePermissionDto } from './dtos/assign-role-permission.dto.js';
 
 interface Filter {
   roleId?: string;
@@ -16,6 +20,10 @@ export class RolePermissionService {
     // private readonly dataSource: DataSource,
     private readonly rolePermissionRepo: RolePermissionRepository
   ) {}
+
+  async searchRolePermissions(query: RolePermissionSearchQueryDto): Promise<PaginatedResult<RolePermissionEntity>> {
+    return this.rolePermissionRepo.searchRolePermissions(query);
+  }
 
   async findByPermissionId(permissionId: string): Promise<RolePermissionEntity[]> {
     return this.rolePermissionRepo.find({ where: { permissionId } });
@@ -63,25 +71,38 @@ export class RolePermissionService {
     return this.rolePermissionRepo.find({ where });
   }
 
-  async createServiceVisibleRole(
-    attrs: Partial<RolePermissionEntity>,
+  async assignRolePermission(
+    dto: AssignRolePermissionDto,
     transactionManager?: EntityManager
   ): Promise<RolePermissionEntity> {
-    const rolePermissionEntity = new RolePermissionEntity();
+    // 이미 할당된 권한인지 확인
+    const existing = await this.rolePermissionRepo.findOne({
+      where: { roleId: dto.roleId, permissionId: dto.permissionId }
+    });
 
-    Object.assign(rolePermissionEntity, attrs);
+    if (existing) {
+      throw new Error('Role permission already assigned');
+    }
+
+    const rolePermissionEntity = new RolePermissionEntity();
+    Object.assign(rolePermissionEntity, dto);
 
     return this.rolePermissionRepo.saveEntity(rolePermissionEntity, transactionManager);
   }
 
-  async updateServiceVisibleRole(
-    rolePermissionEntity: RolePermissionEntity,
+  async removeRolePermission(
+    roleId: string, 
+    permissionId: string,
     transactionManager?: EntityManager
-  ): Promise<UpdateResult> {
-    return this.rolePermissionRepo.updateEntity(rolePermissionEntity, transactionManager);
-  }
+  ): Promise<void> {
+    const rolePermission = await this.rolePermissionRepo.findOne({
+      where: { roleId, permissionId }
+    });
 
-  async deleteServiceVisibleRole(id: string): Promise<UpdateResult> {
-    return this.rolePermissionRepo.softDelete(id);
+    if (!rolePermission) {
+      throw new Error('Role permission not found');
+    }
+
+    await this.rolePermissionRepo.remove(rolePermission);
   }
 }

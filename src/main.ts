@@ -1,7 +1,8 @@
+import '@krgeobuk/core/interfaces/express';
+
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 
-import '@krgeobuk/core/interfaces/express';
 import { setupSwagger } from '@krgeobuk/swagger/config';
 
 import { DefaultConfig } from '@common/interfaces/index.js';
@@ -28,3 +29,4 @@ async function bootstrap(): Promise<void> {
 }
 
 bootstrap();
+

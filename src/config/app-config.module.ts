@@ -10,10 +10,10 @@ import { validationSchema } from './validation.schema.js';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      // envFilePath: [`.env.${process.env.NODE_ENV}.local`],
       load: [defaultConfig, mysqlConfig, redisConfig, jwtConfig],
       validationSchema,
     }),
   ],
 })
 export class AppConfigModule {}
+
