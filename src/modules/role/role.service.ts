@@ -7,7 +7,7 @@ import { RoleException } from '@krgeobuk/role/exception';
 
 import { RoleEntity } from './entities/role.entity.js';
 import { RoleRepository } from './role.repository.js';
-import { RoleSearchQueryDto } from './dtos/role-search-query.dto.js';
+import { RoleSearchQueryDto } from '@krgeobuk/role/dtos';
 
 interface RoleFilter {
   name?: string;

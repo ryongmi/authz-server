@@ -31,11 +31,12 @@ import {
   RoleSearchQueryDto,
   RoleDetailDto,
   RoleSearchResultDto,
+  CreateRoleDto,
+  UpdateRoleDto,
 } from '@krgeobuk/role/dtos';
 import type { PaginatedResult } from '@krgeobuk/core/interfaces';
 
 import { RoleService } from './role.service.js';
-import { CreateRoleDto, UpdateRoleDto, RoleResponseDto } from './dtos/index.js';
 
 @SwaggerApiTags({ tags: ['roles'] })
 @SwaggerApiBearerAuth()
@@ -63,24 +64,36 @@ export class RoleController {
     dto: RoleSearchResultDto,
     ...RoleResponse.FETCH_SUCCESS,
   })
-  async searchRoles(@Query() query: RoleSearchQueryDto): Promise<PaginatedResult<RoleResponseDto>> {
+  async searchRoles(@Query() query: RoleSearchQueryDto): Promise<PaginatedResult<RoleDetailDto>> {
     return this.roleService.searchRoles(query);
   }
 
   @Post()
-  @HttpCode(201)
-  @SwaggerApiBearerAuth()
-  @SwaggerApiOperation({ summary: '역할 생성' })
-  @SwaggerApiCreatedResponse({
-    description: '역할 생성 성공',
-    type: RoleResponseDto,
+  @HttpCode(RoleResponse.CREATE_SUCCESS.statusCode)
+  @SwaggerApiOperation({ summary: '역할 생성', description: '새로운 역할을 생성합니다.' })
+  @SwaggerApiBody({ dto: CreateRoleDto, description: '역할 생성 데이터' })
+  @SwaggerApiOkResponse({
+    status: RoleResponse.CREATE_SUCCESS.statusCode,
+    description: RoleResponse.CREATE_SUCCESS.message,
+    dto: RoleDetailDto,
+  })
+  @SwaggerApiErrorResponse({
+    status: RoleError.ROLE_CREATE_ERROR.statusCode,
+    description: RoleError.ROLE_CREATE_ERROR.message,
+  })
+  @SwaggerApiErrorResponse({
+    status: RoleError.ROLE_ALREADY_EXISTS.statusCode,
+    description: RoleError.ROLE_ALREADY_EXISTS.message,
   })
   @UseGuards(AccessTokenGuard)
-  @Serialize({ dto: RoleResponseDto })
+  @Serialize({
+    dto: RoleDetailDto,
+    ...RoleResponse.CREATE_SUCCESS,
+  })
   async createRole(
     @Body() createRoleDto: CreateRoleDto,
     @CurrentJwt() jwt: JwtPayload
-  ): Promise<RoleResponseDto> {
+  ): Promise<RoleDetailDto> {
     return this.roleService.createRole(createRoleDto);
   }
 
@@ -116,43 +129,71 @@ export class RoleController {
   }
 
   @Patch(':id')
-  @HttpCode(200)
-  @SwaggerApiBearerAuth()
-  @SwaggerApiOperation({ summary: '역할 수정' })
+  @HttpCode(RoleResponse.UPDATE_SUCCESS.statusCode)
+  @SwaggerApiOperation({ summary: '역할 수정', description: '기존 역할을 수정합니다.' })
+  @SwaggerApiParam({
+    name: 'id',
+    type: String,
+    description: '역할 ID',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @SwaggerApiBody({ dto: UpdateRoleDto, description: '역할 수정 데이터' })
   @SwaggerApiOkResponse({
-    description: '역할 수정 성공',
-    type: RoleResponseDto,
+    status: RoleResponse.UPDATE_SUCCESS.statusCode,
+    description: RoleResponse.UPDATE_SUCCESS.message,
+    dto: RoleDetailDto,
+  })
+  @SwaggerApiErrorResponse({
+    status: RoleError.ROLE_NOT_FOUND.statusCode,
+    description: RoleError.ROLE_NOT_FOUND.message,
+  })
+  @SwaggerApiErrorResponse({
+    status: RoleError.ROLE_UPDATE_ERROR.statusCode,
+    description: RoleError.ROLE_UPDATE_ERROR.message,
   })
   @UseGuards(AccessTokenGuard)
-  @Serialize({ dto: RoleResponseDto })
+  @Serialize({
+    dto: RoleDetailDto,
+    ...RoleResponse.UPDATE_SUCCESS,
+  })
   async updateRole(
     @Param('id') id: string,
     @Body() updateRoleDto: UpdateRoleDto,
     @CurrentJwt() jwt: JwtPayload
-  ): Promise<RoleResponseDto> {
-    const existingRole = await this.roleService.findById(id);
-    if (!existingRole) {
-      throw new Error('Role not found');
-    }
-
-    Object.assign(existingRole, updateRoleDto);
-    await this.roleService.updateRole(existingRole);
-
-    return this.roleService.findById(id);
+  ): Promise<RoleDetailDto> {
+    return this.roleService.updateRole(id, updateRoleDto);
   }
 
   @Delete(':id')
-  @HttpCode(200)
-  @SwaggerApiBearerAuth()
-  @SwaggerApiOperation({ summary: '역할 삭제' })
-  @SwaggerApiOkResponse({ description: '역할 삭제 성공' })
+  @HttpCode(RoleResponse.DELETE_SUCCESS.statusCode)
+  @SwaggerApiOperation({ summary: '역할 삭제', description: '역할을 소프트 삭제합니다.' })
+  @SwaggerApiParam({
+    name: 'id',
+    type: String,
+    description: '역할 ID',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @SwaggerApiOkResponse({
+    status: RoleResponse.DELETE_SUCCESS.statusCode,
+    description: RoleResponse.DELETE_SUCCESS.message,
+  })
+  @SwaggerApiErrorResponse({
+    status: RoleError.ROLE_NOT_FOUND.statusCode,
+    description: RoleError.ROLE_NOT_FOUND.message,
+  })
+  @SwaggerApiErrorResponse({
+    status: RoleError.ROLE_DELETE_ERROR.statusCode,
+    description: RoleError.ROLE_DELETE_ERROR.message,
+  })
   @UseGuards(AccessTokenGuard)
+  @Serialize({
+    ...RoleResponse.DELETE_SUCCESS,
+  })
   async deleteRole(
     @Param('id') id: string,
     @CurrentJwt() jwt: JwtPayload
-  ): Promise<{ message: string }> {
+  ): Promise<void> {
     await this.roleService.deleteRole(id);
-    return { message: 'Role deleted successfully' };
   }
 }
 

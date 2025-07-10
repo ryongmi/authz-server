@@ -1,4 +1,1 @@
-export * from './create-role.dto.js';
-export * from './update-role.dto.js';
-export * from './role-search-query.dto.js';
-export * from './role-response.dto.js';
+// DTO들은 @krgeobuk/role/dtos 공통패키지에서 가져옵니다.
