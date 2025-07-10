@@ -86,3 +86,6 @@ Repository 파일들이 최근에 재구성되었습니다:
 - 100자 줄 길이, 단일 따옴표, 세미콜론으로 Prettier 설정
 - ESLint는 `@krgeobuk/eslint-config/nest` 설정을 확장
 - 컨테이너 개발을 위한 특별한 감시 옵션으로 Docker 핫 리로드 설정
+
+## API 응답 포맷
+프로젝트 전체 API 응답 포맷 표준은 메인 CLAUDE.md의 "API 응답 포맷 표준" 섹션을 참조하세요.
