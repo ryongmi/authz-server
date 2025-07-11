@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
+import { ClientsModule, Transport } from '@nestjs/microservices';
 
 import { SerializerInterceptor } from '@krgeobuk/core/interceptors';
 
@@ -12,6 +13,27 @@ import { UserRoleModule } from '@modules/user-role/index.js';
 
 @Module({
   imports: [
+    // TCP 클라이언트 설정
+    ClientsModule.register([
+      {
+        name: 'AUTH_SERVICE',
+        transport: Transport.TCP,
+        options: {
+          host: 'auth-server',
+          port: 8010,
+        },
+      },
+    ]),
+    ClientsModule.register([
+      {
+        name: 'PORTAL_SERVICE',
+        transport: Transport.TCP,
+        options: {
+          host: 'portal-server',
+          port: 8210,
+        },
+      },
+    ]),
     AuthorizationModule,
     PermissionModule,
     RoleModule,
