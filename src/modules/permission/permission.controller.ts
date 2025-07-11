@@ -31,16 +31,12 @@ import {
   PermissionSearchQueryDto,
   PermissionDetailDto,
   PermissionSearchResultDto,
+  PermissionPaginatedSearchResultDto,
   CreatePermissionDto,
   UpdatePermissionDto,
 } from '@krgeobuk/permission/dtos';
-import type { PaginatedResult } from '@krgeobuk/core/interfaces';
 
-import { PermissionEntity } from './entities/permission.entity.js';
 import { PermissionService } from './permission.service.js';
-
-// import { TransactionInterceptor } from '@krgeobuk/core/interceptors';
-// import { Serialize, TransactionManager } from '@krgeobuk/core/decorators';
 
 @SwaggerApiTags({ tags: ['permissions'] })
 @SwaggerApiBearerAuth()
@@ -65,14 +61,14 @@ export class PermissionController {
   })
   @UseGuards(AccessTokenGuard)
   @Serialize({
-    dto: PermissionSearchResultDto,
+    dto: PermissionPaginatedSearchResultDto,
     ...PermissionResponse.FETCH_SUCCESS,
   })
-  async getPermissions(
+  async searchPermissions(
     @Query() query: PermissionSearchQueryDto,
     @CurrentJwt() jwt: JwtPayload
-  ): Promise<PaginatedResult<PermissionEntity>> {
-    return this.permissionService.searchPermissions(query);
+  ): Promise<PermissionPaginatedSearchResultDto> {
+    return await this.permissionService.searchPermissions(query);
   }
 
   @Get(':id')
@@ -102,11 +98,11 @@ export class PermissionController {
     dto: PermissionDetailDto,
     ...PermissionResponse.FETCH_SUCCESS,
   })
-  async getPermission(
+  async getPermissionById(
     @Param('id') id: string,
     @CurrentJwt() jwt: JwtPayload
-  ): Promise<PermissionEntity> {
-    return this.permissionService.findByIdOrFail(id);
+  ): Promise<PermissionDetailDto> {
+    return await this.permissionService.getPermissionById(id);
   }
 
   @Post()
@@ -116,7 +112,6 @@ export class PermissionController {
   @SwaggerApiOkResponse({
     status: PermissionResponse.CREATE_SUCCESS.statusCode,
     description: PermissionResponse.CREATE_SUCCESS.message,
-    dto: PermissionDetailDto,
   })
   @SwaggerApiErrorResponse({
     status: PermissionError.PERMISSION_CREATE_ERROR.statusCode,
@@ -128,14 +123,13 @@ export class PermissionController {
   })
   @UseGuards(AccessTokenGuard)
   @Serialize({
-    dto: PermissionDetailDto,
     ...PermissionResponse.CREATE_SUCCESS,
   })
   async createPermission(
     @Body() dto: CreatePermissionDto,
     @CurrentJwt() jwt: JwtPayload
-  ): Promise<PermissionEntity> {
-    return this.permissionService.createPermission(dto);
+  ): Promise<void> {
+    await this.permissionService.createPermission(dto);
   }
 
   @Patch(':id')
@@ -151,7 +145,6 @@ export class PermissionController {
   @SwaggerApiOkResponse({
     status: PermissionResponse.UPDATE_SUCCESS.statusCode,
     description: PermissionResponse.UPDATE_SUCCESS.message,
-    dto: PermissionDetailDto,
   })
   @SwaggerApiErrorResponse({
     status: PermissionError.PERMISSION_NOT_FOUND.statusCode,
@@ -163,15 +156,14 @@ export class PermissionController {
   })
   @UseGuards(AccessTokenGuard)
   @Serialize({
-    dto: PermissionDetailDto,
     ...PermissionResponse.UPDATE_SUCCESS,
   })
   async updatePermission(
     @Param('id') id: string,
     @Body() dto: UpdatePermissionDto,
     @CurrentJwt() jwt: JwtPayload
-  ): Promise<PermissionEntity> {
-    return this.permissionService.updatePermission(id, dto);
+  ): Promise<void> {
+    await this.permissionService.updatePermission(id, dto);
   }
 
   @Delete(':id')
@@ -203,4 +195,3 @@ export class PermissionController {
     await this.permissionService.deletePermission(id);
   }
 }
-

@@ -1,1 +1,0 @@
-// DTO들은 @krgeobuk/permission/dtos 공통패키지에서 가져옵니다.
