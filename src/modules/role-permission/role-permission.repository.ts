@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+
 import { DataSource } from 'typeorm';
 
 import { BaseRepository } from '@krgeobuk/core/repositories';
@@ -39,9 +40,18 @@ export class RolePermissionRepository extends BaseRepository<RolePermissionEntit
    * @param query 검색 조건 및 페이지 정보
    * @returns 페이지네이션된 역할-권한 목록
    */
-  async searchRolePermissions(query: RolePermissionSearchQueryDto): Promise<PaginatedResult<RolePermissionEntity>> {
-    const { page = 1, limit = 30, sortOrder = 'DESC', sortBy = 'roleId', roleId, permissionId } = query;
-    
+  async searchRolePermissions(
+    query: RolePermissionSearchQueryDto
+  ): Promise<PaginatedResult<RolePermissionEntity>> {
+    const {
+      page = 1,
+      limit = 30,
+      sortOrder = 'DESC',
+      sortBy = 'roleId',
+      roleId,
+      permissionId,
+    } = query;
+
     const skip = (page - 1) * limit;
     const queryBuilder = this.createQueryBuilder('rolePermission');
 
@@ -52,10 +62,7 @@ export class RolePermissionRepository extends BaseRepository<RolePermissionEntit
       queryBuilder.andWhere('rolePermission.permissionId = :permissionId', { permissionId });
     }
 
-    queryBuilder
-      .orderBy(`rolePermission.${sortBy}`, sortOrder)
-      .skip(skip)
-      .take(limit);
+    queryBuilder.orderBy(`rolePermission.${sortBy}`, sortOrder).skip(skip).take(limit);
 
     const [items, total] = await queryBuilder.getManyAndCount();
 
