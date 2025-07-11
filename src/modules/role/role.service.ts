@@ -34,42 +34,6 @@ export class RoleService {
 
   // ==================== PUBLIC METHODS ====================
 
-  async searchRoles(query: RoleSearchQuery): Promise<PaginatedResult<RoleSearchResult>> {
-    const roles = await this.roleRepo.searchRoles(query);
-
-    if (roles.items.length === 0) {
-      return { items: [], pageInfo: roles.pageInfo };
-    }
-
-    const roleIds = roles.items.map((role) => role.id!);
-
-    try {
-      const [userRoles, services] = await Promise.all([
-        this.getUserRolesByRoleIds(roleIds),
-        this.getServicesByQuery(query, roles.items),
-      ]);
-
-      const items = this.buildRoleSearchResults(roles.items, userRoles, services);
-
-      return {
-        items,
-        pageInfo: roles.pageInfo,
-      };
-    } catch (error: unknown) {
-      this.logger.warn('TCP service communication failed, using fallback data', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        serviceId: query.serviceId,
-        roleCount: roles.items.length,
-      });
-
-      const items = this.buildFallbackRoleSearchResults(roles.items);
-      return {
-        items,
-        pageInfo: roles.pageInfo,
-      };
-    }
-  }
-
   async findById(id: string): Promise<RoleEntity | null> {
     return this.roleRepo.findOneById(id);
   }
@@ -154,6 +118,42 @@ export class RoleService {
         priority: role.priority!,
         service: { id: '', name: 'Service unavailable' },
         users: [],
+      };
+    }
+  }
+
+  async searchRoles(query: RoleSearchQuery): Promise<PaginatedResult<RoleSearchResult>> {
+    const roles = await this.roleRepo.searchRoles(query);
+
+    if (roles.items.length === 0) {
+      return { items: [], pageInfo: roles.pageInfo };
+    }
+
+    const roleIds = roles.items.map((role) => role.id!);
+
+    try {
+      const [userRoles, services] = await Promise.all([
+        this.getUserRolesByRoleIds(roleIds),
+        this.getServicesByQuery(query, roles.items),
+      ]);
+
+      const items = this.buildRoleSearchResults(roles.items, userRoles, services);
+
+      return {
+        items,
+        pageInfo: roles.pageInfo,
+      };
+    } catch (error: unknown) {
+      this.logger.warn('TCP service communication failed, using fallback data', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        serviceId: query.serviceId,
+        roleCount: roles.items.length,
+      });
+
+      const items = this.buildFallbackRoleSearchResults(roles.items);
+      return {
+        items,
+        pageInfo: roles.pageInfo,
       };
     }
   }
