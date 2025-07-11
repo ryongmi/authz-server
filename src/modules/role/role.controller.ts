@@ -33,8 +33,8 @@ import {
   RoleSearchResultDto,
   CreateRoleDto,
   UpdateRoleDto,
+  RolePaginatedSearchResultDto,
 } from '@krgeobuk/role/dtos';
-import type { PaginatedResult } from '@krgeobuk/core/interfaces';
 
 import { RoleService } from './role.service.js';
 
@@ -61,11 +61,11 @@ export class RoleController {
   })
   @UseGuards(AccessTokenGuard)
   @Serialize({
-    dto: RoleSearchResultDto,
+    dto: RolePaginatedSearchResultDto,
     ...RoleResponse.FETCH_SUCCESS,
   })
-  async searchRoles(@Query() query: RoleSearchQueryDto): Promise<PaginatedResult<RoleDetailDto>> {
-    return this.roleService.searchRoles(query);
+  async searchRoles(@Query() query: RoleSearchQueryDto): Promise<RolePaginatedSearchResultDto> {
+    return await this.roleService.searchRoles(query);
   }
 
   @Post()
@@ -75,7 +75,6 @@ export class RoleController {
   @SwaggerApiOkResponse({
     status: RoleResponse.CREATE_SUCCESS.statusCode,
     description: RoleResponse.CREATE_SUCCESS.message,
-    dto: RoleDetailDto,
   })
   @SwaggerApiErrorResponse({
     status: RoleError.ROLE_CREATE_ERROR.statusCode,
@@ -87,14 +86,13 @@ export class RoleController {
   })
   @UseGuards(AccessTokenGuard)
   @Serialize({
-    dto: RoleDetailDto,
     ...RoleResponse.CREATE_SUCCESS,
   })
   async createRole(
     @Body() createRoleDto: CreateRoleDto,
     @CurrentJwt() jwt: JwtPayload
-  ): Promise<RoleDetailDto> {
-    return this.roleService.createRole(createRoleDto);
+  ): Promise<void> {
+    await this.roleService.createRole(createRoleDto);
   }
 
   @Get(':id')
@@ -124,8 +122,8 @@ export class RoleController {
     dto: RoleDetailDto,
     ...RoleResponse.FETCH_SUCCESS,
   })
-  async findRoleById(@Param('id') id: string): Promise<RoleResponseDto> {
-    return this.roleService.findByIdOrFail(id);
+  async getRoleById(@Param('id') id: string): Promise<RoleDetailDto> {
+    return await this.roleService.getRoleById(id);
   }
 
   @Patch(':id')
@@ -141,7 +139,6 @@ export class RoleController {
   @SwaggerApiOkResponse({
     status: RoleResponse.UPDATE_SUCCESS.statusCode,
     description: RoleResponse.UPDATE_SUCCESS.message,
-    dto: RoleDetailDto,
   })
   @SwaggerApiErrorResponse({
     status: RoleError.ROLE_NOT_FOUND.statusCode,
@@ -153,15 +150,14 @@ export class RoleController {
   })
   @UseGuards(AccessTokenGuard)
   @Serialize({
-    dto: RoleDetailDto,
     ...RoleResponse.UPDATE_SUCCESS,
   })
   async updateRole(
     @Param('id') id: string,
     @Body() updateRoleDto: UpdateRoleDto,
     @CurrentJwt() jwt: JwtPayload
-  ): Promise<RoleDetailDto> {
-    return this.roleService.updateRole(id, updateRoleDto);
+  ): Promise<void> {
+    await this.roleService.updateRole(id, updateRoleDto);
   }
 
   @Delete(':id')
@@ -189,11 +185,7 @@ export class RoleController {
   @Serialize({
     ...RoleResponse.DELETE_SUCCESS,
   })
-  async deleteRole(
-    @Param('id') id: string,
-    @CurrentJwt() jwt: JwtPayload
-  ): Promise<void> {
+  async deleteRole(@Param('id') id: string, @CurrentJwt() jwt: JwtPayload): Promise<void> {
     await this.roleService.deleteRole(id);
   }
 }
-
