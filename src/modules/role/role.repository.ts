@@ -7,8 +7,6 @@ import { LimitType, SortOrderType, SortByBaseType } from '@krgeobuk/core/enum';
 import type { PaginatedResult } from '@krgeobuk/core/interfaces';
 import type { RoleSearchQuery } from '@krgeobuk/role/interfaces';
 
-import { UserRoleEntity } from '@modules/user-role/index.js';
-
 import { RoleEntity } from './entities/role.entity.js';
 
 @Injectable()
@@ -34,25 +32,20 @@ export class RoleRepository extends BaseRepository<RoleEntity> {
 
     const skip = (page - 1) * limit;
     const roleAlias = 'role';
-    const userRoleAlias = 'userRole';
 
-    const qb = this.createQueryBuilder(roleAlias)
-      .select([
-        `${roleAlias}.id`,
-        `${roleAlias}.name`, 
-        `${roleAlias}.description`,
-        `${roleAlias}.priority`,
-        `${roleAlias}.serviceId`,
-      ]);
+    const qb = this.createQueryBuilder(roleAlias).select([
+      `${roleAlias}.id`,
+      `${roleAlias}.name`,
+      `${roleAlias}.description`,
+      `${roleAlias}.priority`,
+      `${roleAlias}.serviceId`,
+    ]);
 
+    // 검색 조건 적용
     if (serviceId) {
-      qb.leftJoin(
-        UserRoleEntity,
-        userRoleAlias,
-        `${roleAlias}.id = ${userRoleAlias}.roleId`
-      ).andWhere(`${roleAlias}.serviceId = :serviceId`, { serviceId });
+      qb.andWhere(`${roleAlias}.serviceId = :serviceId`, { serviceId });
     }
-    
+
     if (name) {
       qb.andWhere(`${roleAlias}.name LIKE :name`, { name: `%${name}%` });
     }
@@ -63,10 +56,7 @@ export class RoleRepository extends BaseRepository<RoleEntity> {
     qb.offset(skip).limit(limit);
 
     // 최적화: 별도 쿼리로 COUNT와 데이터 조회 분리하여 성능 향상
-    const [rows, total] = await Promise.all([
-      qb.getRawMany(),
-      qb.getCount()
-    ]);
+    const [rows, total] = await Promise.all([qb.getRawMany(), qb.getCount()]);
 
     const items: Partial<RoleEntity>[] = rows.map((row) => ({
       id: row[`${roleAlias}_id`],
