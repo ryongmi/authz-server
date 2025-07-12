@@ -20,8 +20,7 @@ import type {
   PermissionDetail,
 } from '@krgeobuk/permission/interfaces';
 
-// RolePermissionService는 실제 구현에 따라 필요할 수 있음
-import { RolePermissionEntity, RolePermissionService } from '@modules/role-permission/index.js';
+import { RolePermissionService } from '@modules/role-permission/index.js';
 import { RoleEntity, RoleService } from '@modules/role/index.js';
 
 import { PermissionEntity } from './entities/permission.entity.js';
@@ -40,15 +39,15 @@ export class PermissionService {
 
   // ==================== PUBLIC METHODS ====================
 
-  async findById(id: string): Promise<PermissionEntity | null> {
-    return this.permissionRepo.findOneById(id);
+  async findById(permissionId: string): Promise<PermissionEntity | null> {
+    return this.permissionRepo.findOneById(permissionId);
   }
 
-  async findByIdOrFail(id: string): Promise<PermissionEntity> {
-    const permission = await this.permissionRepo.findOneById(id);
+  async findByIdOrFail(permissionId: string): Promise<PermissionEntity> {
+    const permission = await this.permissionRepo.findOneById(permissionId);
 
     if (!permission) {
-      this.logger.debug('Permission not found', { permissionId: id });
+      this.logger.debug('Permission not found', { permissionId });
       throw PermissionException.permissionNotFound();
     }
 
@@ -91,13 +90,13 @@ export class PermissionService {
     return this.permissionRepo.find({ where });
   }
 
-  async getPermissionById(id: string): Promise<PermissionDetail> {
-    const permission = await this.findByIdOrFail(id);
+  async getPermissionById(permissionId: string): Promise<PermissionDetail> {
+    const permission = await this.findByIdOrFail(permissionId);
 
     try {
       const [service, roles] = await Promise.all([
         this.getServiceById(permission.serviceId),
-        this.getRolesByPermissionId(id),
+        this.getRolesByPermissionId(permissionId),
       ]);
 
       return {
@@ -110,7 +109,7 @@ export class PermissionService {
     } catch (error: unknown) {
       this.logger.warn('Failed to enrich permission with external data, returning basic info', {
         error: error instanceof Error ? error.message : 'Unknown error',
-        permissionId: id,
+        permissionId,
         serviceId: permission.serviceId,
       });
 
@@ -136,12 +135,12 @@ export class PermissionService {
     const permissionIds = permissions.items.map((permission) => permission.id!);
 
     try {
-      const [rolePermissions, services] = await Promise.all([
-        this.getRolePermissionsByPermissionIds(permissionIds),
+      const [roleCounts, services] = await Promise.all([
+        this.getRoleCountsByPermissionIds(permissionIds),
         this.getServicesByQuery(query, permissions.items),
       ]);
 
-      const items = this.buildPermissionSearchResults(permissions.items, rolePermissions, services);
+      const items = this.buildPermissionSearchResults(permissions.items, roleCounts, services);
 
       return {
         items,
@@ -207,15 +206,15 @@ export class PermissionService {
   }
 
   async updatePermission(
-    id: string,
+    permissionId: string,
     dto: UpdatePermissionDto,
     transactionManager?: EntityManager
   ): Promise<void> {
     try {
-      const permission = await this.permissionRepo.findOneById(id);
+      const permission = await this.permissionRepo.findOneById(permissionId);
 
       if (!permission) {
-        this.logger.warn('Permission update failed: permission not found', { permissionId: id });
+        this.logger.warn('Permission update failed: permission not found', { permissionId });
         throw PermissionException.permissionNotFound();
       }
 
@@ -225,13 +224,13 @@ export class PermissionService {
           where: {
             action: dto.action,
             serviceId: permission.serviceId,
-            id: Not(id), // 현재 권한 제외
+            id: Not(permissionId), // 현재 권한 제외
           },
         });
 
         if (existingPermission) {
           this.logger.warn('Permission update failed: duplicate action in service', {
-            permissionId: id,
+            permissionId: permissionId,
             newAction: dto.action,
             serviceId: permission.serviceId,
           });
@@ -243,7 +242,7 @@ export class PermissionService {
       await this.permissionRepo.updateEntity(permission, transactionManager);
 
       this.logger.log('Permission updated successfully', {
-        permissionId: id,
+        permissionId: permissionId,
         updatedFields: Object.keys(dto),
       });
     } catch (error: unknown) {
@@ -253,7 +252,7 @@ export class PermissionService {
 
       this.logger.error('Permission update failed', {
         error: error instanceof Error ? error.message : 'Unknown error',
-        permissionId: id,
+        permissionId: permissionId,
         dto,
       });
 
@@ -261,15 +260,15 @@ export class PermissionService {
     }
   }
 
-  async deletePermission(id: string): Promise<UpdateResult> {
+  async deletePermission(permissionId: string): Promise<UpdateResult> {
     try {
       // 권한 존재 여부 확인
-      const permission = await this.findByIdOrFail(id);
+      const permission = await this.findByIdOrFail(permissionId);
 
-      const result = await this.permissionRepo.softDelete(id);
+      const result = await this.permissionRepo.softDelete(permissionId);
 
       this.logger.log('Permission deleted successfully', {
-        permissionId: id,
+        permissionId,
         action: permission.action,
       });
 
@@ -281,7 +280,7 @@ export class PermissionService {
 
       this.logger.error('Permission deletion failed', {
         error: error instanceof Error ? error.message : 'Unknown error',
-        permissionId: id,
+        permissionId: permissionId,
       });
 
       throw PermissionException.permissionDeleteError();
@@ -290,10 +289,18 @@ export class PermissionService {
 
   // ==================== PRIVATE HELPER METHODS ====================
 
-  private async getRolePermissionsByPermissionIds(
+  private async getRoleCountsByPermissionIds(
     permissionIds: string[]
-  ): Promise<RolePermissionEntity[]> {
-    return this.rolePermissionService.findByPermissionIds(permissionIds);
+  ): Promise<Map<string, number>> {
+    const roleIdsMap = await this.rolePermissionService.getRoleIdsBatch(permissionIds);
+    const roleCounts = new Map<string, number>();
+
+    permissionIds.forEach((permissionId) => {
+      const roleIds = roleIdsMap.get(permissionId) || [];
+      roleCounts.set(permissionId, roleIds.length);
+    });
+
+    return roleCounts;
   }
 
   private async getServicesByQuery(
@@ -306,14 +313,31 @@ export class PermissionService {
     const serviceMsgPattern = hasServiceIdFilter ? 'service.findById' : 'service.findByIds';
     const serviceMsgPayload = hasServiceIdFilter ? { serviceId: serviceIds } : { serviceIds };
 
-    return firstValueFrom(
-      this.portalClient.send<Service | Service[]>(serviceMsgPattern, serviceMsgPayload)
-    );
+    try {
+      return await firstValueFrom(
+        this.portalClient.send<Service | Service[]>(serviceMsgPattern, serviceMsgPayload)
+      );
+    } catch (error: unknown) {
+      this.logger.warn('Failed to fetch services from portal service, using fallback', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        serviceMsgPattern,
+        serviceIds: Array.isArray(serviceIds) ? serviceIds : [serviceIds],
+      });
+
+      // 폴백 처리: 기본 서비스 정보 반환
+      if (hasServiceIdFilter) {
+        return { id: '', name: 'Service unavailable' };
+      } else {
+        return Array.isArray(serviceIds)
+          ? serviceIds.map((id) => ({ id, name: 'Service unavailable' }))
+          : [{ id: serviceIds as string, name: 'Service unavailable' }];
+      }
+    }
   }
 
   private buildPermissionSearchResults(
     permissions: Partial<PermissionEntity>[],
-    rolePermissions: RolePermissionEntity[],
+    roleCounts: Map<string, number>,
     services: Service | Service[]
   ): PermissionSearchResult[] {
     return permissions.map((permission) => {
@@ -325,9 +349,7 @@ export class PermissionService {
             })
           : services;
 
-      const roleCount = rolePermissions.filter(
-        (rolePermission) => rolePermission.permissionId === permission.id
-      ).length;
+      const roleCount = roleCounts.get(permission.id!) || 0;
 
       return {
         id: permission.id!,
@@ -352,12 +374,23 @@ export class PermissionService {
   }
 
   private async getServiceById(serviceId: string): Promise<Service> {
-    return firstValueFrom(this.portalClient.send<Service>('service.findById', { serviceId }));
+    try {
+      return await firstValueFrom(
+        this.portalClient.send<Service>('service.findById', { serviceId })
+      );
+    } catch (error: unknown) {
+      this.logger.warn('Failed to fetch service from portal service, using fallback', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        serviceId,
+      });
+
+      // 폴백 처리: 기본 서비스 정보 반환
+      return { id: '', name: 'Service unavailable' };
+    }
   }
 
   private async getRolesByPermissionId(permissionId: string): Promise<Role[]> {
-    const rolePermissions = await this.rolePermissionService.findByPermissionId(permissionId);
-    const roleIds = rolePermissions.map((rolePermission) => rolePermission.roleId);
+    const roleIds = await this.rolePermissionService.getRoleIds(permissionId);
 
     if (roleIds.length === 0) {
       return [];

@@ -27,6 +27,7 @@ import { CurrentJwt } from '@krgeobuk/jwt/decorators';
 import { AccessTokenGuard } from '@krgeobuk/jwt/guards';
 import { PermissionResponse } from '@krgeobuk/permission/response';
 import { PermissionError } from '@krgeobuk/permission/exception';
+import { PermissionIdParamsDto } from '@krgeobuk/shared/permission/dtos';
 import {
   PermissionSearchQueryDto,
   PermissionDetailDto,
@@ -71,11 +72,11 @@ export class PermissionController {
     return await this.permissionService.searchPermissions(query);
   }
 
-  @Get(':id')
+  @Get(':permissionId')
   @HttpCode(PermissionResponse.FETCH_SUCCESS.statusCode)
   @SwaggerApiOperation({ summary: '권한 상세 조회', description: 'ID로 특정 권한을 조회합니다.' })
   @SwaggerApiParam({
-    name: 'id',
+    name: 'permissionId',
     type: String,
     description: '권한 ID',
     example: '123e4567-e89b-12d3-a456-426614174000',
@@ -99,10 +100,10 @@ export class PermissionController {
     ...PermissionResponse.FETCH_SUCCESS,
   })
   async getPermissionById(
-    @Param('id') id: string,
+    @Param() params: PermissionIdParamsDto,
     @CurrentJwt() jwt: JwtPayload
   ): Promise<PermissionDetailDto> {
-    return await this.permissionService.getPermissionById(id);
+    return await this.permissionService.getPermissionById(params.permissionId);
   }
 
   @Post()
@@ -132,11 +133,11 @@ export class PermissionController {
     await this.permissionService.createPermission(dto);
   }
 
-  @Patch(':id')
+  @Patch(':permissionId')
   @HttpCode(PermissionResponse.UPDATE_SUCCESS.statusCode)
   @SwaggerApiOperation({ summary: '권한 수정', description: '기존 권한을 수정합니다.' })
   @SwaggerApiParam({
-    name: 'id',
+    name: 'permissionId',
     type: String,
     description: '권한 ID',
     example: '123e4567-e89b-12d3-a456-426614174000',
@@ -159,18 +160,18 @@ export class PermissionController {
     ...PermissionResponse.UPDATE_SUCCESS,
   })
   async updatePermission(
-    @Param('id') id: string,
+    @Param() params: PermissionIdParamsDto,
     @Body() dto: UpdatePermissionDto,
     @CurrentJwt() jwt: JwtPayload
   ): Promise<void> {
-    await this.permissionService.updatePermission(id, dto);
+    await this.permissionService.updatePermission(params.permissionId, dto);
   }
 
-  @Delete(':id')
+  @Delete(':permissionId')
   @HttpCode(PermissionResponse.DELETE_SUCCESS.statusCode)
   @SwaggerApiOperation({ summary: '권한 삭제', description: '권한을 소프트 삭제합니다.' })
   @SwaggerApiParam({
-    name: 'id',
+    name: 'permissionId',
     type: String,
     description: '권한 ID',
     example: '123e4567-e89b-12d3-a456-426614174000',
@@ -191,7 +192,10 @@ export class PermissionController {
   @Serialize({
     ...PermissionResponse.DELETE_SUCCESS,
   })
-  async deletePermission(@Param('id') id: string, @CurrentJwt() jwt: JwtPayload): Promise<void> {
-    await this.permissionService.deletePermission(id);
+  async deletePermission(
+    @Param() params: PermissionIdParamsDto,
+    @CurrentJwt() jwt: JwtPayload
+  ): Promise<void> {
+    await this.permissionService.deletePermission(params.permissionId);
   }
 }
