@@ -1,29 +1,21 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, HttpException } from '@nestjs/common';
 
-import { DataSource, EntityManager, FindOptionsWhere, In, UpdateResult } from 'typeorm';
+import { In } from 'typeorm';
 
-import type { PaginatedResult } from '@krgeobuk/core/interfaces';
+import { UserRoleException } from '@krgeobuk/authz-relations/user-role/exception';
 
 import { UserRoleEntity } from './entities/user-role.entity.js';
 import { UserRoleRepository } from './user-role.repository.js';
-import { UserRoleSearchQueryDto } from './dtos/user-role-search-query.dto.js';
-import { AssignUserRoleDto } from './dtos/assign-user-role.dto.js';
-
-interface Filter {
-  userId?: string;
-  roleId?: string;
-}
 
 @Injectable()
 export class UserRoleService {
+  private readonly logger = new Logger(UserRoleService.name);
+
   constructor(
-    private readonly dataSource: DataSource,
     private readonly userRoleRepo: UserRoleRepository
   ) {}
 
-  async searchUserRoles(query: UserRoleSearchQueryDto): Promise<PaginatedResult<UserRoleEntity>> {
-    return this.userRoleRepo.searchUserRoles(query);
-  }
+  // ==================== 조회 메서드 (ID 목록 반환) ====================
 
   async findByUserId(userId: string): Promise<UserRoleEntity[]> {
     return this.userRoleRepo.find({ where: { userId } });
@@ -33,76 +25,295 @@ export class UserRoleService {
     return this.userRoleRepo.find({ where: { roleId } });
   }
 
-  async findByUserIds(userIds: string[]): Promise<UserRoleEntity[]> {
-    return this.userRoleRepo.find({ where: { userId: In(userIds) } });
-  }
-
-  async findByRoleIds(roleIds: string[]): Promise<UserRoleEntity[]> {
-    return this.userRoleRepo.find({ where: { roleId: In(roleIds) } });
-  }
-
-  async findByAnd(filter: Filter = {}): Promise<UserRoleEntity[]> {
-    const where: FindOptionsWhere<UserRoleEntity> = {};
-
-    if (filter.userId) where.userId = filter.userId;
-    if (filter.roleId) where.roleId = filter.roleId;
-
-    // ✅ 필터 없으면 전체 조회
-    if (Object.keys(where).length === 0) {
-      return this.userRoleRepo.find(); // 조건 없이 전체 조회
+  /**
+   * 사용자의 역할 ID 목록 조회
+   */
+  async getRoleIds(userId: string): Promise<string[]> {
+    try {
+      return await this.userRoleRepo.findRoleIdsByUserId(userId);
+    } catch (error: unknown) {
+      this.logger.error('Role IDs fetch by user failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId,
+      });
+      throw UserRoleException.fetchError();
     }
-
-    return this.userRoleRepo.find({ where });
   }
 
-  async findByOr(filter: Filter = {}): Promise<UserRoleEntity[]> {
-    const { userId, roleId } = filter;
-
-    const where: FindOptionsWhere<UserRoleEntity>[] = [];
-
-    if (userId) where.push({ userId });
-    if (roleId) where.push({ roleId });
-
-    // ✅ 필터 없으면 전체 조회
-    if (where.length === 0) {
-      return this.userRoleRepo.find(); // 조건 없이 전체 조회
+  /**
+   * 역할의 사용자 ID 목록 조회
+   */
+  async getUserIds(roleId: string): Promise<string[]> {
+    try {
+      return await this.userRoleRepo.findUserIdsByRoleId(roleId);
+    } catch (error: unknown) {
+      this.logger.error('User IDs fetch by role failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        roleId,
+      });
+      throw UserRoleException.fetchError();
     }
-
-    return this.userRoleRepo.find({ where });
   }
 
-  async assignUserRole(
-    dto: AssignUserRoleDto,
-    transactionManager?: EntityManager
-  ): Promise<UserRoleEntity> {
-    // 이미 할당된 역할인지 확인
-    const existing = await this.userRoleRepo.findOne({
-      where: { userId: dto.userId, roleId: dto.roleId }
-    });
-
-    if (existing) {
-      throw new Error('User role already assigned');
+  /**
+   * 사용자-역할 관계 존재 확인
+   */
+  async exists(userId: string, roleId: string): Promise<boolean> {
+    try {
+      return await this.userRoleRepo.existsUserRole(userId, roleId);
+    } catch (error: unknown) {
+      this.logger.error('User role existence check failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId,
+        roleId,
+      });
+      throw UserRoleException.fetchError();
     }
-
-    const userRoleEntity = new UserRoleEntity();
-    Object.assign(userRoleEntity, dto);
-
-    return this.userRoleRepo.saveEntity(userRoleEntity, transactionManager);
   }
 
-  async removeUserRole(
-    userId: string, 
-    roleId: string,
-    transactionManager?: EntityManager
-  ): Promise<void> {
-    const userRole = await this.userRoleRepo.findOne({
-      where: { userId, roleId }
-    });
-
-    if (!userRole) {
-      throw new Error('User role not found');
+  /**
+   * 여러 사용자의 역할 ID 목록 조회 (배치)
+   */
+  async getRoleIdsBatch(userIds: string[]): Promise<Map<string, string[]>> {
+    try {
+      return await this.userRoleRepo.findRoleIdsByUserIds(userIds);
+    } catch (error: unknown) {
+      this.logger.error('Role IDs fetch by users failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userCount: userIds.length,
+      });
+      throw UserRoleException.fetchError();
     }
+  }
 
-    await this.userRoleRepo.remove(userRole);
+  /**
+   * 여러 역할의 사용자 ID 목록 조회 (배치)
+   */
+  async getUserIdsBatch(roleIds: string[]): Promise<Map<string, string[]>> {
+    try {
+      return await this.userRoleRepo.findUserIdsByRoleIds(roleIds);
+    } catch (error: unknown) {
+      this.logger.error('User IDs fetch by roles failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        roleCount: roleIds.length,
+      });
+      throw UserRoleException.fetchError();
+    }
+  }
+
+  // ==================== 변경 메서드 ====================
+
+  /**
+   * 단일 사용자-역할 할당
+   */
+  async assignRole(userId: string, roleId: string): Promise<void> {
+    try {
+      // 중복 확인
+      const exists = await this.exists(userId, roleId);
+      if (exists) {
+        this.logger.warn('User role already assigned', {
+          userId,
+          roleId,
+        });
+        throw UserRoleException.alreadyAssigned();
+      }
+
+      const entity = new UserRoleEntity();
+      entity.userId = userId;
+      entity.roleId = roleId;
+
+      await this.userRoleRepo.save(entity);
+
+      this.logger.log('User role assigned successfully', {
+        userId,
+        roleId,
+      });
+    } catch (error: unknown) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      this.logger.error('User role assignment failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId,
+        roleId,
+      });
+
+      throw UserRoleException.assignError();
+    }
+  }
+
+  /**
+   * 단일 사용자-역할 해제
+   */
+  async revokeRole(userId: string, roleId: string): Promise<void> {
+    try {
+      const result = await this.userRoleRepo.delete({ userId, roleId });
+
+      if (result.affected === 0) {
+        this.logger.warn('User role not found for revocation', {
+          userId,
+          roleId,
+        });
+        throw UserRoleException.notAssigned();
+      }
+
+      this.logger.log('User role revoked successfully', {
+        userId,
+        roleId,
+      });
+    } catch (error: unknown) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      this.logger.error('User role revocation failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId,
+        roleId,
+      });
+
+      throw UserRoleException.revokeError();
+    }
+  }
+
+  /**
+   * 여러 역할 할당 (배치)
+   */
+  async assignMultipleRoles(userId: string, roleIds: string[]): Promise<void> {
+    try {
+      const entities = roleIds.map((roleId) => {
+        const entity = new UserRoleEntity();
+        entity.userId = userId;
+        entity.roleId = roleId;
+        return entity;
+      });
+
+      // 배치 삽입 (중복 시 무시)
+      await this.userRoleRepo
+        .createQueryBuilder()
+        .insert()
+        .into(UserRoleEntity)
+        .values(entities)
+        .orIgnore() // MySQL: ON DUPLICATE KEY UPDATE (무시)
+        .execute();
+
+      this.logger.log('Multiple user roles assigned successfully', {
+        userId,
+        roleCount: roleIds.length,
+      });
+    } catch (error: unknown) {
+      this.logger.error('Multiple user roles assignment failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId,
+        roleCount: roleIds.length,
+      });
+
+      throw UserRoleException.assignMultipleError();
+    }
+  }
+
+  /**
+   * 여러 역할 해제 (배치)
+   */
+  async revokeMultipleRoles(userId: string, roleIds: string[]): Promise<void> {
+    try {
+      await this.userRoleRepo.delete({
+        userId,
+        roleId: In(roleIds),
+      });
+
+      this.logger.log('Multiple user roles revoked successfully', {
+        userId,
+        roleCount: roleIds.length,
+      });
+    } catch (error: unknown) {
+      this.logger.error('Multiple user roles revocation failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId,
+        roleCount: roleIds.length,
+      });
+
+      throw UserRoleException.revokeMultipleError();
+    }
+  }
+
+  /**
+   * 사용자의 모든 역할 해제
+   */
+  async revokeAllRolesFromUser(userId: string): Promise<void> {
+    try {
+      const result = await this.userRoleRepo.delete({ userId });
+      
+      this.logger.log('All roles revoked from user successfully', {
+        userId,
+        revokedCount: result.affected || 0,
+      });
+    } catch (error: unknown) {
+      this.logger.error('Revoke all roles from user failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId,
+      });
+
+      throw UserRoleException.revokeAllFromUserError();
+    }
+  }
+
+  /**
+   * 역할의 모든 사용자 해제
+   */
+  async revokeAllUsersFromRole(roleId: string): Promise<void> {
+    try {
+      const result = await this.userRoleRepo.delete({ roleId });
+      
+      this.logger.log('All users revoked from role successfully', {
+        roleId,
+        revokedCount: result.affected || 0,
+      });
+    } catch (error: unknown) {
+      this.logger.error('Revoke all users from role failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        roleId,
+      });
+
+      throw UserRoleException.revokeAllFromRoleError();
+    }
+  }
+
+  /**
+   * 사용자 역할 완전 교체 (배치)
+   */
+  async replaceUserRoles(dto: { userId: string; roleIds: string[] }): Promise<void> {
+    try {
+      await this.userRoleRepo.manager.transaction(async (manager) => {
+        // 1. 기존 역할 모두 삭제
+        await manager.delete(UserRoleEntity, { userId: dto.userId });
+
+        // 2. 새로운 역할 배치 삽입
+        if (dto.roleIds.length > 0) {
+          const entities = dto.roleIds.map((roleId) => {
+            const entity = new UserRoleEntity();
+            entity.userId = dto.userId;
+            entity.roleId = roleId;
+            return entity;
+          });
+
+          await manager.save(UserRoleEntity, entities);
+        }
+      });
+
+      this.logger.log('User roles replaced successfully', {
+        userId: dto.userId,
+        newRoleCount: dto.roleIds.length,
+      });
+    } catch (error: unknown) {
+      this.logger.error('User roles replacement failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId: dto.userId,
+        newRoleCount: dto.roleIds.length,
+      });
+
+      throw UserRoleException.replaceError();
+    }
   }
 }
