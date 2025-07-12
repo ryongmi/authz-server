@@ -23,12 +23,10 @@ import {
 import { JwtPayload } from '@krgeobuk/jwt/interfaces';
 import { CurrentJwt } from '@krgeobuk/jwt/decorators';
 import { AccessTokenGuard } from '@krgeobuk/jwt/guards';
-import {
-  RolePermissionParamsDto,
-  RoleParamsDto,
-  PermissionParamsDto,
-  PermissionIdsDto,
-} from '@krgeobuk/authz-relations/role-permission/dtos';
+import { PermissionIdParamsDto } from '@krgeobuk/shared/permission/dtos';
+import { RoleIdParamsDto } from '@krgeobuk/shared/role/dtos';
+import { RolePermissionParamsDto } from '@krgeobuk/shared/role-permission/dtos';
+import { PermissionIdsDto } from '@krgeobuk/authz-relations/role-permission/dtos';
 import {
   RolePermissionResponse,
   RolePermissionError,
@@ -71,7 +69,7 @@ export class RolePermissionController {
     ...RolePermissionResponse.FETCH_SUCCESS,
   })
   async getPermissionIdsByRoleId(
-    @Param() params: RoleParamsDto,
+    @Param() params: RoleIdParamsDto,
     @CurrentJwt() jwt: JwtPayload
   ): Promise<string[]> {
     return this.rolePermissionService.getPermissionIds(params.roleId);
@@ -102,7 +100,7 @@ export class RolePermissionController {
     ...RolePermissionResponse.FETCH_SUCCESS,
   })
   async getRoleIdsByPermissionId(
-    @Param() params: PermissionParamsDto,
+    @Param() params: PermissionIdParamsDto,
     @CurrentJwt() jwt: JwtPayload
   ): Promise<string[]> {
     return this.rolePermissionService.getRoleIds(params.permissionId);
@@ -253,7 +251,7 @@ export class RolePermissionController {
     ...RolePermissionResponse.ASSIGN_MULTIPLE_SUCCESS,
   })
   async assignMultiplePermissions(
-    @Param() params: RoleParamsDto,
+    @Param() params: RoleIdParamsDto,
     @Body() dto: PermissionIdsDto,
     @CurrentJwt() jwt: JwtPayload
   ): Promise<void> {
@@ -291,7 +289,7 @@ export class RolePermissionController {
     ...RolePermissionResponse.REVOKE_MULTIPLE_SUCCESS,
   })
   async revokeMultiplePermissions(
-    @Param() params: RoleParamsDto,
+    @Param() params: RoleIdParamsDto,
     @Body() dto: PermissionIdsDto,
     @CurrentJwt() jwt: JwtPayload
   ): Promise<void> {
@@ -329,7 +327,7 @@ export class RolePermissionController {
     ...RolePermissionResponse.REPLACE_SUCCESS,
   })
   async replaceRolePermissions(
-    @Param() params: RoleParamsDto,
+    @Param() params: RoleIdParamsDto,
     @Body() dto: PermissionIdsDto,
     @CurrentJwt() jwt: JwtPayload
   ): Promise<void> {
