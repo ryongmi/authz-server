@@ -1,7 +1,7 @@
 import { Controller, Logger } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 
-import { PaginatedResult } from '@krgeobuk/core/interfaces';
+import { TcpOperationResponse, TcpSearchResponse } from '@krgeobuk/core/interfaces';
 import type {
   PermissionSearchQuery,
   PermissionSearchResult,
@@ -12,7 +12,6 @@ import type {
   TcpPermissionParams,
   TcpMultiServiceParams,
   TcpPermissionUpdateParams,
-  TcpOperationResponse,
 } from '@krgeobuk/permission/tcp/interfaces';
 import { PermissionTcpPatterns } from '@krgeobuk/permission/tcp/patterns';
 
@@ -35,7 +34,7 @@ export class PermissionTcpController {
   @MessagePattern(PermissionTcpPatterns.SEARCH)
   async searchPermissions(
     @Payload() query: PermissionSearchQuery
-  ): Promise<PaginatedResult<PermissionSearchResult>> {
+  ): Promise<TcpSearchResponse<PermissionSearchResult>> {
     this.logger.debug('TCP permission search request received', {
       serviceId: query.serviceId,
       hasActionFilter: !!query.action,
