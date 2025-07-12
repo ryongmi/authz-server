@@ -1,7 +1,7 @@
 import { Controller, Logger } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 
-import { PaginatedResult } from '@krgeobuk/core/interfaces';
+import { TcpOperationResponse, TcpSearchResponse } from '@krgeobuk/core/interfaces';
 import { RoleTcpPatterns } from '@krgeobuk/role/tcp/patterns';
 import type {
   RoleSearchQuery,
@@ -13,7 +13,6 @@ import type {
   TcpRoleParams,
   TcpMultiServiceParams,
   TcpRoleUpdateParams,
-  TcpOperationResponse,
 } from '@krgeobuk/role/tcp/interfaces';
 
 import { RoleEntity } from './entities/role.entity.js';
@@ -33,7 +32,7 @@ export class RoleTcpController {
    * 역할 목록 검색 및 페이지네이션
    */
   @MessagePattern(RoleTcpPatterns.SEARCH)
-  async searchRoles(@Payload() query: RoleSearchQuery): Promise<PaginatedResult<RoleSearchResult>> {
+  async searchRoles(@Payload() query: RoleSearchQuery): Promise<TcpSearchResponse<RoleSearchResult>> {
     this.logger.debug('TCP role search request received', {
       serviceId: query.serviceId,
       hasNameFilter: !!query.name,
