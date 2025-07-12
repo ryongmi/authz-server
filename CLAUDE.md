@@ -940,6 +940,492 @@ authz-server는 다음과 같은 도메인 모듈들로 구성됩니다:
 - **user-role** - 사용자-역할 중간테이블 (중간테이블 패턴)
 - **service-visible-role** - 서비스 가시성 역할 중간테이블 (중간테이블 패턴)
 
+## 중간테이블 도메인 구현 표준
+
+중간테이블(Junction Table) 도메인은 두 개의 주 도메인 간의 다대다 관계를 관리하는 특수한 패턴입니다. krgeobuk 생태계에서는 다음과 같은 표준화된 구현 방식을 사용합니다.
+
+### 중간테이블 도메인 특징
+
+**기본 도메인과의 차이점:**
+- 기본 도메인: 단일 엔티티의 CRUD 관리
+- 중간테이블 도메인: 두 엔티티 간의 관계 관리 + 고성능 조회/배치 처리
+
+**예시:** `user-role`, `role-permission`, `service-visible-role`
+
+### Entity 설계 표준
+
+#### 1. 복합 Primary Key 구조
+```typescript
+import { Entity, Index, PrimaryColumn } from 'typeorm';
+
+@Entity('user_role')
+@Index('IDX_USER_ROLE_USER', ['userId'])
+@Index('IDX_USER_ROLE_ROLE', ['roleId'])
+@Index('IDX_USER_ROLE_UNIQUE', ['userId', 'roleId'], { unique: true })
+export class UserRoleEntity {
+  @PrimaryColumn({ type: 'uuid' })
+  userId!: string;
+
+  @PrimaryColumn({ type: 'uuid' })
+  roleId!: string;
+}
+```
+
+**핵심 구성 요소:**
+- **복합 Primary Key**: 두 관련 엔티티의 ID
+- **개별 인덱스**: 각 FK에 대한 조회 최적화
+- **유니크 제약조건**: 중복 관계 방지 및 성능 최적화
+
+#### 2. 인덱스 최적화 패턴
+```typescript
+// 필수 인덱스 3종 세트
+@Index('IDX_{TABLE}_USER', ['userId'])        // 사용자별 조회용
+@Index('IDX_{TABLE}_ROLE', ['roleId'])        // 역할별 조회용  
+@Index('IDX_{TABLE}_UNIQUE', ['userId', 'roleId'], { unique: true })  // 중복 방지
+```
+
+### Repository 설계 표준
+
+#### 1. 최적화된 ID 조회 메서드
+```typescript
+@Injectable()
+export class UserRoleRepository extends BaseRepository<UserRoleEntity> {
+  
+  /**
+   * 사용자별 역할 ID 목록 조회 (최적화된 쿼리)
+   */
+  async findRoleIdsByUserId(userId: string): Promise<string[]> {
+    const result = await this.createQueryBuilder('ur')
+      .select('ur.roleId')
+      .where('ur.userId = :userId', { userId })
+      .getRawMany();
+
+    return result.map((row) => row.ur_roleId);
+  }
+
+  /**
+   * 역할별 사용자 ID 목록 조회 (최적화된 쿼리)
+   */
+  async findUserIdsByRoleId(roleId: string): Promise<string[]> {
+    const result = await this.createQueryBuilder('ur')
+      .select('ur.userId')
+      .where('ur.roleId = :roleId', { roleId })
+      .getRawMany();
+
+    return result.map((row) => row.ur_userId);
+  }
+}
+```
+
+#### 2. 배치 처리 메서드
+```typescript
+/**
+ * 여러 사용자의 역할 ID 목록 조회 (배치 처리)
+ */
+async findRoleIdsByUserIds(userIds: string[]): Promise<Map<string, string[]>> {
+  const result = await this.createQueryBuilder('ur')
+    .select(['ur.userId', 'ur.roleId'])
+    .where('ur.userId IN (:...userIds)', { userIds })
+    .getRawMany();
+
+  const userRoleMap = new Map<string, string[]>();
+
+  result.forEach((row) => {
+    const userId = row.ur_userId;
+    const roleId = row.ur_roleId;
+
+    if (!userRoleMap.has(userId)) {
+      userRoleMap.set(userId, []);
+    }
+    userRoleMap.get(userId)!.push(roleId);
+  });
+
+  return userRoleMap;
+}
+
+/**
+ * 존재 확인 (count 기반 최적화)
+ */
+async existsUserRole(userId: string, roleId: string): Promise<boolean> {
+  const count = await this.createQueryBuilder('ur')
+    .where('ur.userId = :userId AND ur.roleId = :roleId', { userId, roleId })
+    .getCount();
+
+  return count > 0;
+}
+```
+
+**Repository 최적화 원칙:**
+- **ID만 조회**: `getRawMany()`로 필요한 컬럼만 SELECT
+- **Map 반환**: 배치 처리에서 O(1) 접근을 위한 Map 구조
+- **Count 기반**: 존재 확인은 `getCount()` 사용
+
+### Service 설계 표준
+
+#### 1. 메서드 계층 구조
+```typescript
+@Injectable()
+export class UserRoleService {
+  private readonly logger = new Logger(UserRoleService.name);
+
+  constructor(private readonly userRoleRepo: UserRoleRepository) {}
+
+  // ==================== 조회 메서드 (ID 목록 반환) ====================
+
+  /**
+   * 사용자의 역할 ID 목록 조회
+   */
+  async getRoleIds(userId: string): Promise<string[]> {
+    try {
+      return await this.userRoleRepo.findRoleIdsByUserId(userId);
+    } catch (error: unknown) {
+      this.logger.error('Role IDs fetch by user failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId,
+      });
+      throw UserRoleException.fetchError();
+    }
+  }
+
+  /**
+   * 역할의 사용자 ID 목록 조회
+   */
+  async getUserIds(roleId: string): Promise<string[]> {
+    try {
+      return await this.userRoleRepo.findUserIdsByRoleId(roleId);
+    } catch (error: unknown) {
+      this.logger.error('User IDs fetch by role failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        roleId,
+      });
+      throw UserRoleException.fetchError();
+    }
+  }
+
+  /**
+   * 사용자-역할 관계 존재 확인
+   */
+  async exists(userId: string, roleId: string): Promise<boolean> {
+    try {
+      return await this.userRoleRepo.existsUserRole(userId, roleId);
+    } catch (error: unknown) {
+      this.logger.error('User role existence check failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId,
+        roleId,
+      });
+      throw UserRoleException.fetchError();
+    }
+  }
+
+  /**
+   * 여러 사용자의 역할 ID 목록 조회 (배치)
+   */
+  async getRoleIdsBatch(userIds: string[]): Promise<Map<string, string[]>> {
+    try {
+      return await this.userRoleRepo.findRoleIdsByUserIds(userIds);
+    } catch (error: unknown) {
+      this.logger.error('Role IDs fetch by users failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userCount: userIds.length,
+      });
+      throw UserRoleException.fetchError();
+    }
+  }
+
+  // ==================== 변경 메서드 ====================
+
+  /**
+   * 단일 사용자-역할 할당
+   */
+  async assignRole(userId: string, roleId: string): Promise<void> {
+    try {
+      // 중복 확인
+      const exists = await this.exists(userId, roleId);
+      if (exists) {
+        this.logger.warn('User role already assigned', { userId, roleId });
+        throw UserRoleException.alreadyAssigned();
+      }
+
+      const entity = new UserRoleEntity();
+      entity.userId = userId;
+      entity.roleId = roleId;
+
+      await this.userRoleRepo.save(entity);
+
+      this.logger.log('User role assigned successfully', { userId, roleId });
+    } catch (error: unknown) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      this.logger.error('User role assignment failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId,
+        roleId,
+      });
+
+      throw UserRoleException.assignError();
+    }
+  }
+
+  // ==================== 배치 처리 메서드 ====================
+
+  /**
+   * 여러 역할 할당 (배치)
+   */
+  async assignMultipleRoles(userId: string, roleIds: string[]): Promise<void> {
+    try {
+      const entities = roleIds.map((roleId) => {
+        const entity = new UserRoleEntity();
+        entity.userId = userId;
+        entity.roleId = roleId;
+        return entity;
+      });
+
+      // 배치 삽입 (중복 시 무시)
+      await this.userRoleRepo
+        .createQueryBuilder()
+        .insert()
+        .into(UserRoleEntity)
+        .values(entities)
+        .orIgnore() // MySQL: ON DUPLICATE KEY UPDATE (무시)
+        .execute();
+
+      this.logger.log('Multiple user roles assigned successfully', {
+        userId,
+        roleCount: roleIds.length,
+      });
+    } catch (error: unknown) {
+      this.logger.error('Multiple user roles assignment failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId,
+        roleCount: roleIds.length,
+      });
+
+      throw UserRoleException.assignMultipleError();
+    }
+  }
+
+  /**
+   * 사용자 역할 완전 교체 (배치)
+   */
+  async replaceUserRoles(dto: { userId: string; roleIds: string[] }): Promise<void> {
+    try {
+      await this.userRoleRepo.manager.transaction(async (manager) => {
+        // 1. 기존 역할 모두 삭제
+        await manager.delete(UserRoleEntity, { userId: dto.userId });
+
+        // 2. 새로운 역할 배치 삽입
+        if (dto.roleIds.length > 0) {
+          const entities = dto.roleIds.map((roleId) => {
+            const entity = new UserRoleEntity();
+            entity.userId = dto.userId;
+            entity.roleId = roleId;
+            return entity;
+          });
+
+          await manager.save(UserRoleEntity, entities);
+        }
+      });
+
+      this.logger.log('User roles replaced successfully', {
+        userId: dto.userId,
+        newRoleCount: dto.roleIds.length,
+      });
+    } catch (error: unknown) {
+      this.logger.error('User roles replacement failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId: dto.userId,
+        newRoleCount: dto.roleIds.length,
+      });
+
+      throw UserRoleException.replaceError();
+    }
+  }
+}
+```
+
+#### 2. 성능 최적화 원칙
+**Repository 메서드 직접 호출:**
+```typescript
+// ✅ 올바른 패턴 - Repository 최적화 메서드 직접 사용
+async getRoleIds(userId: string): Promise<string[]> {
+  return await this.userRoleRepo.findRoleIdsByUserId(userId);
+}
+
+// ❌ 비효율적 패턴 - 전체 엔티티 조회 후 매핑
+async getRoleIds(userId: string): Promise<string[]> {
+  const userRoles = await this.findByUserId(userId);
+  return userRoles.map(ur => ur.roleId);
+}
+```
+
+### Controller 설계 표준
+
+#### 1. 중간테이블 RESTful API 패턴
+```typescript
+@SwaggerApiTags({ tags: ['user-roles'] })
+@SwaggerApiBearerAuth()
+@UseGuards(AccessTokenGuard)
+@Controller()
+export class UserRoleController {
+  constructor(private readonly userRoleService: UserRoleService) {}
+
+  // ==================== 조회 API ====================
+
+  @Get('users/:userId/roles')
+  async getRoleIdsByUserId(
+    @Param() params: UserIdParamsDto,
+    @CurrentJwt() jwt: JwtPayload
+  ): Promise<string[]> {
+    return this.userRoleService.getRoleIds(params.userId);
+  }
+
+  @Get('roles/:roleId/users')
+  async getUserIdsByRoleId(
+    @Param() params: RoleIdParamsDto,
+    @CurrentJwt() jwt: JwtPayload
+  ): Promise<string[]> {
+    return this.userRoleService.getUserIds(params.roleId);
+  }
+
+  @Get('users/:userId/roles/:roleId/exists')
+  async checkUserRoleExists(
+    @Param() params: UserRoleParamsDto,
+    @CurrentJwt() jwt: JwtPayload
+  ): Promise<boolean> {
+    return this.userRoleService.exists(params.userId, params.roleId);
+  }
+
+  // ==================== 변경 API ====================
+
+  @Post('users/:userId/roles/:roleId')
+  async assignUserRole(
+    @Param() params: UserRoleParamsDto,
+    @CurrentJwt() jwt: JwtPayload
+  ): Promise<void> {
+    await this.userRoleService.assignRole(params.userId, params.roleId);
+  }
+
+  @Delete('users/:userId/roles/:roleId')
+  async revokeUserRole(
+    @Param() params: UserRoleParamsDto,
+    @CurrentJwt() jwt: JwtPayload
+  ): Promise<void> {
+    await this.userRoleService.revokeRole(params.userId, params.roleId);
+  }
+
+  // ==================== 배치 처리 API ====================
+
+  @Post('users/:userId/roles/batch')
+  async assignMultipleRoles(
+    @Param() params: UserIdParamsDto,
+    @Body() dto: RoleIdsDto,
+    @CurrentJwt() jwt: JwtPayload
+  ): Promise<void> {
+    await this.userRoleService.assignMultipleRoles(params.userId, dto.roleIds);
+  }
+
+  @Put('users/:userId/roles')
+  async replaceUserRoles(
+    @Param() params: UserIdParamsDto,
+    @Body() dto: RoleIdsDto,
+    @CurrentJwt() jwt: JwtPayload
+  ): Promise<void> {
+    await this.userRoleService.replaceUserRoles({
+      userId: params.userId,
+      roleIds: dto.roleIds,
+    });
+  }
+}
+```
+
+#### 2. TCP Controller 패턴
+```typescript
+@Controller()
+export class UserRoleTcpController {
+  private readonly logger = new Logger(UserRoleTcpController.name);
+
+  constructor(private readonly userRoleService: UserRoleService) {}
+
+  @MessagePattern(UserRoleTcpPatterns.FIND_ROLES_BY_USER)
+  async findRoleIdsByUserId(@Payload() data: TcpUserParams): Promise<string[]> {
+    try {
+      this.logger.debug('TCP user-role find roles by user requested', {
+        userId: data.userId,
+      });
+      return await this.userRoleService.getRoleIds(data.userId);
+    } catch (error: unknown) {
+      this.logger.error('TCP user-role find roles by user failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId: data.userId,
+      });
+      throw error;
+    }
+  }
+
+  @MessagePattern(UserRoleTcpPatterns.REPLACE_ROLES)
+  async replaceUserRoles(@Payload() data: TcpUserRoleBatch): Promise<TcpOperationResponse> {
+    try {
+      this.logger.log('TCP user-role replace requested', {
+        userId: data.userId,
+        newRoleCount: data.roleIds.length,
+      });
+      await this.userRoleService.replaceUserRoles(data);
+      return { success: true };
+    } catch (error: unknown) {
+      this.logger.error('TCP user-role replace failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId: data.userId,
+        newRoleCount: data.roleIds.length,
+      });
+      throw error;
+    }
+  }
+}
+```
+
+### 중간테이블 구현 체크리스트
+
+#### Entity 설계
+- [ ] 복합 Primary Key 구조 (두 FK)
+- [ ] 개별 FK 인덱스 구성
+- [ ] 유니크 제약조건 (`{ unique: true }`)
+- [ ] 적절한 테이블명 (snake_case)
+
+#### Repository 최적화
+- [ ] ID 전용 조회 메서드 (`getRawMany()` 사용)
+- [ ] 배치 처리 메서드 (Map 반환)
+- [ ] Count 기반 존재 확인
+- [ ] 효율적 쿼리 패턴
+
+#### Service 구조
+- [ ] 조회 메서드 (단일 + 배치)
+- [ ] 변경 메서드 (단일 + 배치)
+- [ ] Replace 기능 (트랜잭션 기반)
+- [ ] Repository 최적화 메서드 직접 사용
+
+#### Controller 완전성
+- [ ] RESTful API 패턴 (조회/변경/배치)
+- [ ] TCP 메시지 패턴 지원
+- [ ] Replace 엔드포인트 구현
+- [ ] 적절한 Swagger 문서화
+
+#### 성능 최적화
+- [ ] 전체 엔티티 대신 ID만 조회
+- [ ] 배치 처리로 N+1 쿼리 방지
+- [ ] 트랜잭션 기반 안전한 Replace
+- [ ] 인덱스 활용 쿼리 최적화
+
+### 참고 구현체
+
+**완전한 중간테이블 구현 예시:**
+- `user-role` 모듈: 사용자-역할 관계 관리
+- `role-permission` 모듈: 역할-권한 관계 관리
+
+이 표준을 따르면 고성능, 일관성 있는 중간테이블 도메인을 구현할 수 있으며, 마이크로서비스 간 TCP 통신에서도 효율적인 관계 데이터 조회가 가능합니다.
+
 ### 경로 별칭
 TypeScript 경로 별칭:
 - `@modules/*` → `src/modules/*`
