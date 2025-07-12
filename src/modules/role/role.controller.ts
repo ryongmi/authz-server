@@ -27,6 +27,7 @@ import { CurrentJwt } from '@krgeobuk/jwt/decorators';
 import { AccessTokenGuard } from '@krgeobuk/jwt/guards';
 import { RoleResponse } from '@krgeobuk/role/response';
 import { RoleError } from '@krgeobuk/role/exception';
+import { RoleIdParamsDto } from '@krgeobuk/shared/role/dtos';
 import {
   RoleSearchQueryDto,
   RoleDetailDto,
@@ -95,11 +96,11 @@ export class RoleController {
     await this.roleService.createRole(createRoleDto);
   }
 
-  @Get(':id')
+  @Get(':roleId')
   @HttpCode(RoleResponse.FETCH_SUCCESS.statusCode)
   @SwaggerApiOperation({ summary: '역할 상세 조회', description: 'ID로 특정 역할을 조회합니다.' })
   @SwaggerApiParam({
-    name: 'id',
+    name: 'roleId',
     type: String,
     description: '역할 ID',
     example: '123e4567-e89b-12d3-a456-426614174000',
@@ -122,15 +123,15 @@ export class RoleController {
     dto: RoleDetailDto,
     ...RoleResponse.FETCH_SUCCESS,
   })
-  async getRoleById(@Param('id') id: string): Promise<RoleDetailDto> {
-    return await this.roleService.getRoleById(id);
+  async getRoleById(@Param() params: RoleIdParamsDto): Promise<RoleDetailDto> {
+    return await this.roleService.getRoleById(params.roleId);
   }
 
-  @Patch(':id')
+  @Patch(':roleId')
   @HttpCode(RoleResponse.UPDATE_SUCCESS.statusCode)
   @SwaggerApiOperation({ summary: '역할 수정', description: '기존 역할을 수정합니다.' })
   @SwaggerApiParam({
-    name: 'id',
+    name: 'roleId',
     type: String,
     description: '역할 ID',
     example: '123e4567-e89b-12d3-a456-426614174000',
@@ -153,18 +154,18 @@ export class RoleController {
     ...RoleResponse.UPDATE_SUCCESS,
   })
   async updateRole(
-    @Param('id') id: string,
+    @Param() params: RoleIdParamsDto,
     @Body() updateRoleDto: UpdateRoleDto,
     @CurrentJwt() jwt: JwtPayload
   ): Promise<void> {
-    await this.roleService.updateRole(id, updateRoleDto);
+    await this.roleService.updateRole(params.roleId, updateRoleDto);
   }
 
-  @Delete(':id')
+  @Delete(':roleId')
   @HttpCode(RoleResponse.DELETE_SUCCESS.statusCode)
   @SwaggerApiOperation({ summary: '역할 삭제', description: '역할을 소프트 삭제합니다.' })
   @SwaggerApiParam({
-    name: 'id',
+    name: 'roleId',
     type: String,
     description: '역할 ID',
     example: '123e4567-e89b-12d3-a456-426614174000',
@@ -185,7 +186,7 @@ export class RoleController {
   @Serialize({
     ...RoleResponse.DELETE_SUCCESS,
   })
-  async deleteRole(@Param('id') id: string, @CurrentJwt() jwt: JwtPayload): Promise<void> {
-    await this.roleService.deleteRole(id);
+  async deleteRole(@Param() params: RoleIdParamsDto, @CurrentJwt() jwt: JwtPayload): Promise<void> {
+    await this.roleService.deleteRole(params.roleId);
   }
 }

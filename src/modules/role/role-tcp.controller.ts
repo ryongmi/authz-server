@@ -1,13 +1,20 @@
 import { Controller, Logger } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 
+import { PaginatedResult } from '@krgeobuk/core/interfaces';
+import { RoleTcpPatterns } from '@krgeobuk/role/tcp/patterns';
 import type {
   RoleSearchQuery,
+  RoleSearchResult,
   RoleDetail,
   CreateRole,
-  UpdateRole,
 } from '@krgeobuk/role/interfaces';
-import { RolePaginatedSearchResultDto } from '@krgeobuk/role/dtos';
+import type {
+  TcpRoleParams,
+  TcpMultiServiceParams,
+  TcpRoleUpdateParams,
+  TcpOperationResponse,
+} from '@krgeobuk/role/tcp/interfaces';
 
 import { RoleEntity } from './entities/role.entity.js';
 import { RoleService } from './role.service.js';
@@ -25,8 +32,8 @@ export class RoleTcpController {
   /**
    * 역할 목록 검색 및 페이지네이션
    */
-  @MessagePattern('role.search')
-  async searchRoles(@Payload() query: RoleSearchQuery): Promise<RolePaginatedSearchResultDto> {
+  @MessagePattern(RoleTcpPatterns.SEARCH)
+  async searchRoles(@Payload() query: RoleSearchQuery): Promise<PaginatedResult<RoleSearchResult>> {
     this.logger.debug('TCP role search request received', {
       serviceId: query.serviceId,
       hasNameFilter: !!query.name,
@@ -52,8 +59,8 @@ export class RoleTcpController {
   /**
    * 새로운 역할 생성
    */
-  @MessagePattern('role.create')
-  async createRole(@Payload() data: CreateRole): Promise<{ success: boolean }> {
+  @MessagePattern(RoleTcpPatterns.CREATE)
+  async createRole(@Payload() data: CreateRole): Promise<TcpOperationResponse> {
     this.logger.log('TCP role creation requested', {
       name: data.name,
       serviceId: data.serviceId,
@@ -76,8 +83,8 @@ export class RoleTcpController {
   /**
    * 역할 ID로 상세 정보 조회
    */
-  @MessagePattern('role.findById')
-  async findRoleById(@Payload() data: { roleId: string }): Promise<RoleDetail | null> {
+  @MessagePattern(RoleTcpPatterns.FIND_BY_ID)
+  async findRoleById(@Payload() data: TcpRoleParams): Promise<RoleDetail | null> {
     this.logger.debug(`TCP role detail request: ${data.roleId}`);
 
     try {
@@ -96,10 +103,8 @@ export class RoleTcpController {
   /**
    * 역할 정보 수정
    */
-  @MessagePattern('role.update')
-  async updateRole(
-    @Payload() data: { roleId: string; updateData: UpdateRole }
-  ): Promise<{ success: boolean }> {
+  @MessagePattern(RoleTcpPatterns.UPDATE)
+  async updateRole(@Payload() data: TcpRoleUpdateParams): Promise<TcpOperationResponse> {
     this.logger.log('TCP role update requested', { roleId: data.roleId });
 
     try {
@@ -118,8 +123,8 @@ export class RoleTcpController {
   /**
    * 역할 삭제 (소프트 삭제)
    */
-  @MessagePattern('role.delete')
-  async deleteRole(@Payload() data: { roleId: string }): Promise<{ success: boolean }> {
+  @MessagePattern(RoleTcpPatterns.DELETE)
+  async deleteRole(@Payload() data: TcpRoleParams): Promise<TcpOperationResponse> {
     this.logger.log('TCP role deletion requested', { roleId: data.roleId });
 
     try {
@@ -138,8 +143,8 @@ export class RoleTcpController {
   /**
    * 서비스 ID로 역할 목록 조회
    */
-  @MessagePattern('role.findByServiceIds')
-  async findRolesByServiceIds(@Payload() data: { serviceIds: string[] }): Promise<RoleEntity[]> {
+  @MessagePattern(RoleTcpPatterns.FIND_BY_SERVICE_IDS)
+  async findRolesByServiceIds(@Payload() data: TcpMultiServiceParams): Promise<RoleEntity[]> {
     this.logger.debug('TCP roles by services request', {
       serviceCount: data.serviceIds.length,
     });
@@ -160,8 +165,8 @@ export class RoleTcpController {
   /**
    * 역할 존재 여부 확인
    */
-  @MessagePattern('role.exists')
-  async checkRoleExists(@Payload() data: { roleId: string }): Promise<boolean> {
+  @MessagePattern(RoleTcpPatterns.EXISTS)
+  async checkRoleExists(@Payload() data: TcpRoleParams): Promise<boolean> {
     this.logger.debug(`TCP role existence check: ${data.roleId}`);
 
     try {
@@ -178,4 +183,3 @@ export class RoleTcpController {
     }
   }
 }
-

@@ -34,15 +34,15 @@ export class RoleService {
 
   // ==================== PUBLIC METHODS ====================
 
-  async findById(id: string): Promise<RoleEntity | null> {
-    return this.roleRepo.findOneById(id);
+  async findById(roleId: string): Promise<RoleEntity | null> {
+    return this.roleRepo.findOneById(roleId);
   }
 
-  async findByIdOrFail(id: string): Promise<RoleEntity> {
-    const role = await this.roleRepo.findOneById(id);
+  async findByIdOrFail(roleId: string): Promise<RoleEntity> {
+    const role = await this.roleRepo.findOneById(roleId);
 
     if (!role) {
-      this.logger.debug('Role not found', { roleId: id });
+      this.logger.debug('Role not found', { roleId });
       throw RoleException.roleNotFound();
     }
 
@@ -87,13 +87,13 @@ export class RoleService {
     return this.roleRepo.find({ where });
   }
 
-  async getRoleById(id: string): Promise<RoleDetail> {
-    const role = await this.findByIdOrFail(id);
+  async getRoleById(roleId: string): Promise<RoleDetail> {
+    const role = await this.findByIdOrFail(roleId);
 
     try {
       const [service, users] = await Promise.all([
         this.getServiceById(role.serviceId),
-        this.getUsersByRoleId(id),
+        this.getUsersByRoleId(roleId),
       ]);
 
       return {
@@ -107,7 +107,7 @@ export class RoleService {
     } catch (error: unknown) {
       this.logger.warn('Failed to enrich role with external data, returning basic info', {
         error: error instanceof Error ? error.message : 'Unknown error',
-        roleId: id,
+        roleId,
         serviceId: role.serviceId,
       });
 
@@ -201,15 +201,15 @@ export class RoleService {
   }
 
   async updateRole(
-    id: string,
+    roleId: string,
     attrs: Partial<RoleEntity>,
     transactionManager?: EntityManager
   ): Promise<void> {
     try {
-      const role = await this.roleRepo.findOneById(id);
+      const role = await this.roleRepo.findOneById(roleId);
 
       if (!role) {
-        this.logger.warn('Role update failed: role not found', { roleId: id });
+        this.logger.warn('Role update failed: role not found', { roleId });
         throw RoleException.roleNotFound();
       }
 
@@ -219,13 +219,13 @@ export class RoleService {
           where: {
             name: attrs.name,
             serviceId: role.serviceId,
-            id: Not(id), // 현재 역할 제외
+            id: Not(roleId), // 현재 역할 제외
           },
         });
 
         if (existingRole) {
           this.logger.warn('Role update failed: duplicate name in service', {
-            roleId: id,
+            roleId,
             newName: attrs.name,
             serviceId: role.serviceId,
           });
@@ -237,7 +237,7 @@ export class RoleService {
       await this.roleRepo.updateEntity(role, transactionManager);
 
       this.logger.log('Role updated successfully', {
-        roleId: id,
+        roleId,
         updatedFields: Object.keys(attrs),
       });
     } catch (error: unknown) {
@@ -247,7 +247,7 @@ export class RoleService {
 
       this.logger.error('Role update failed', {
         error: error instanceof Error ? error.message : 'Unknown error',
-        roleId: id,
+        roleId,
         attrs,
       });
 
@@ -255,26 +255,26 @@ export class RoleService {
     }
   }
 
-  async deleteRole(id: string): Promise<UpdateResult> {
+  async deleteRole(roleId: string): Promise<UpdateResult> {
     try {
       // 역할 존재 여부 확인
-      const role = await this.findByIdOrFail(id);
+      const role = await this.findByIdOrFail(roleId);
 
       // 역할에 할당된 사용자가 있는지 확인
-      const userRoles = await this.userRoleService.findByRoleId(id);
+      const userRoles = await this.userRoleService.findByRoleId(roleId);
       if (userRoles.length > 0) {
         this.logger.warn('Role deletion failed: role has assigned users', {
-          roleId: id,
+          roleId,
           roleName: role.name,
           assignedUsers: userRoles.length,
         });
         throw RoleException.roleDeleteError(); // 할당된 사용자가 있어서 삭제 불가
       }
 
-      const result = await this.roleRepo.softDelete(id);
+      const result = await this.roleRepo.softDelete(roleId);
 
       this.logger.log('Role deleted successfully', {
-        roleId: id,
+        roleId,
         roleName: role.name,
       });
 
@@ -286,7 +286,7 @@ export class RoleService {
 
       this.logger.error('Role deletion failed', {
         error: error instanceof Error ? error.message : 'Unknown error',
-        roleId: id,
+        roleId,
       });
 
       throw RoleException.roleDeleteError();
@@ -309,9 +309,26 @@ export class RoleService {
     const serviceMsgPattern = hasServiceIdFilter ? 'service.findById' : 'service.findByIds';
     const serviceMsgPayload = hasServiceIdFilter ? { serviceId: serviceIds } : { serviceIds };
 
-    return firstValueFrom(
-      this.portalClient.send<Service | Service[]>(serviceMsgPattern, serviceMsgPayload)
-    );
+    try {
+      return await firstValueFrom(
+        this.portalClient.send<Service | Service[]>(serviceMsgPattern, serviceMsgPayload)
+      );
+    } catch (error: unknown) {
+      this.logger.warn('Failed to fetch services from portal service, using fallback', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        serviceMsgPattern,
+        serviceIds: Array.isArray(serviceIds) ? serviceIds : [serviceIds],
+      });
+
+      // 폴백 처리: 기본 서비스 정보 반환
+      if (hasServiceIdFilter) {
+        return { id: '', name: 'Service unavailable' };
+      } else {
+        return Array.isArray(serviceIds)
+          ? serviceIds.map((id) => ({ id, name: 'Service unavailable' }))
+          : [{ id: serviceIds as string, name: 'Service unavailable' }];
+      }
+    }
   }
 
   private buildRoleSearchResults(
@@ -350,7 +367,19 @@ export class RoleService {
   }
 
   private async getServiceById(serviceId: string): Promise<Service> {
-    return firstValueFrom(this.portalClient.send<Service>('service.findById', { serviceId }));
+    try {
+      return await firstValueFrom(
+        this.portalClient.send<Service>('service.findById', { serviceId })
+      );
+    } catch (error: unknown) {
+      this.logger.warn('Failed to fetch service from portal service, using fallback', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        serviceId,
+      });
+
+      // 폴백 처리: 기본 서비스 정보 반환
+      return { id: '', name: 'Service unavailable' };
+    }
   }
 
   private async getUsersByRoleId(roleId: string): Promise<User[]> {
@@ -361,6 +390,17 @@ export class RoleService {
       return [];
     }
 
-    return firstValueFrom(this.authClient.send<User[]>('user.findByIds', { userIds }));
+    try {
+      return await firstValueFrom(this.authClient.send<User[]>('user.findByIds', { userIds }));
+    } catch (error: unknown) {
+      this.logger.warn('Failed to fetch users from auth service, using fallback', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userIds,
+        roleId,
+      });
+
+      // 폴백 처리: 빈 배열 반환
+      return [];
+    }
   }
 }
