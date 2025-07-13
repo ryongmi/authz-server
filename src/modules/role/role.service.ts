@@ -16,7 +16,7 @@ import type {
 } from '@krgeobuk/role/interfaces';
 
 // UserRoleService는 실제 구현에 따라 필요할 수 있음
-import { UserRoleEntity, UserRoleService } from '@modules/user-role/index.js';
+import { UserRoleService } from '@modules/user-role/index.js';
 
 import { RoleEntity } from './entities/role.entity.js';
 import { RoleRepository } from './role.repository.js';
@@ -132,12 +132,12 @@ export class RoleService {
     const roleIds = roles.items.map((role) => role.id!);
 
     try {
-      const [userRoles, services] = await Promise.all([
+      const [userRolesMap, services] = await Promise.all([
         this.getUserRolesByRoleIds(roleIds),
         this.getServicesByQuery(query, roles.items),
       ]);
 
-      const items = this.buildRoleSearchResults(roles.items, userRoles, services);
+      const items = this.buildRoleSearchResults(roles.items, userRolesMap, services);
 
       return {
         items,
@@ -261,12 +261,12 @@ export class RoleService {
       const role = await this.findByIdOrFail(roleId);
 
       // 역할에 할당된 사용자가 있는지 확인
-      const userRoles = await this.userRoleService.findByRoleId(roleId);
-      if (userRoles.length > 0) {
+      const userIds = await this.userRoleService.getUserIds(roleId);
+      if (userIds.length > 0) {
         this.logger.warn('Role deletion failed: role has assigned users', {
           roleId,
           roleName: role.name,
-          assignedUsers: userRoles.length,
+          assignedUsers: userIds.length,
         });
         throw RoleException.roleDeleteError(); // 할당된 사용자가 있어서 삭제 불가
       }
@@ -295,8 +295,8 @@ export class RoleService {
 
   // ==================== PRIVATE HELPER METHODS ====================
 
-  private async getUserRolesByRoleIds(roleIds: string[]): Promise<UserRoleEntity[]> {
-    return this.userRoleService.findByRoleIds(roleIds);
+  private async getUserRolesByRoleIds(roleIds: string[]): Promise<Map<string, string[]>> {
+    return this.userRoleService.getUserIdsBatch(roleIds);
   }
 
   private async getServicesByQuery(
@@ -333,7 +333,7 @@ export class RoleService {
 
   private buildRoleSearchResults(
     roles: Partial<RoleEntity>[],
-    userRoles: UserRoleEntity[],
+    userRolesMap: Map<string, string[]>,
     services: Service | Service[]
   ): RoleSearchResult[] {
     return roles.map((role) => {
@@ -342,7 +342,7 @@ export class RoleService {
           ? (services.find((s) => s.id === role.serviceId) ?? { id: '', name: 'Unknown Service' })
           : services;
 
-      const userCount = userRoles.filter((userRole) => userRole.roleId === role.id).length;
+      const userCount = userRolesMap.get(role.id!) ? userRolesMap.get(role.id!)!.length : 0;
 
       return {
         id: role.id!,
@@ -383,8 +383,7 @@ export class RoleService {
   }
 
   private async getUsersByRoleId(roleId: string): Promise<User[]> {
-    const userRoles = await this.userRoleService.findByRoleId(roleId);
-    const userIds = userRoles.map((userRole) => userRole.userId);
+    const userIds = await this.userRoleService.getUserIds(roleId);
 
     if (userIds.length === 0) {
       return [];

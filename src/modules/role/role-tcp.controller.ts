@@ -2,18 +2,13 @@ import { Controller, Logger } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 
 import { TcpOperationResponse, TcpSearchResponse } from '@krgeobuk/core/interfaces';
-import { RoleTcpPatterns } from '@krgeobuk/role/tcp/patterns';
 import type {
   RoleSearchQuery,
   RoleSearchResult,
   RoleDetail,
   CreateRole,
+  UpdateRole,
 } from '@krgeobuk/role/interfaces';
-import type {
-  TcpRoleParams,
-  TcpMultiServiceParams,
-  TcpRoleUpdateParams,
-} from '@krgeobuk/role/tcp/interfaces';
 
 import { RoleEntity } from './entities/role.entity.js';
 import { RoleService } from './role.service.js';
@@ -31,20 +26,19 @@ export class RoleTcpController {
   /**
    * 역할 목록 검색 및 페이지네이션
    */
-  @MessagePattern(RoleTcpPatterns.SEARCH)
-  async searchRoles(@Payload() query: RoleSearchQuery): Promise<TcpSearchResponse<RoleSearchResult>> {
-    this.logger.debug('TCP role search request received', {
-      serviceId: query.serviceId,
+  @MessagePattern('role.search')
+  async search(@Payload() query: RoleSearchQuery): Promise<TcpSearchResponse<RoleSearchResult>> {
+    this.logger.debug('TCP role search request', {
       hasNameFilter: !!query.name,
-      page: query.page,
-      limit: query.limit,
+      serviceId: query.serviceId,
     });
 
     try {
       const result = await this.roleService.searchRoles(query);
-      this.logger.log(
-        `TCP role search completed: ${result.items.length}/${result.pageInfo.totalItems} roles`
-      );
+      this.logger.log('TCP role search completed', {
+        resultCount: result.items.length,
+        totalItems: result.pageInfo.totalItems,
+      });
       return result;
     } catch (error: unknown) {
       this.logger.error('TCP role search failed', {
@@ -58,8 +52,8 @@ export class RoleTcpController {
   /**
    * 새로운 역할 생성
    */
-  @MessagePattern(RoleTcpPatterns.CREATE)
-  async createRole(@Payload() data: CreateRole): Promise<TcpOperationResponse> {
+  @MessagePattern('role.create')
+  async create(@Payload() data: CreateRole): Promise<TcpOperationResponse> {
     this.logger.log('TCP role creation requested', {
       name: data.name,
       serviceId: data.serviceId,
@@ -67,7 +61,10 @@ export class RoleTcpController {
 
     try {
       await this.roleService.createRole(data);
-      this.logger.log(`TCP role created successfully: ${data.name}`);
+      this.logger.log('TCP role creation completed', {
+        name: data.name,
+        serviceId: data.serviceId,
+      });
       return { success: true };
     } catch (error: unknown) {
       this.logger.error('TCP role creation failed', {
@@ -82,8 +79,8 @@ export class RoleTcpController {
   /**
    * 역할 ID로 상세 정보 조회
    */
-  @MessagePattern(RoleTcpPatterns.FIND_BY_ID)
-  async findRoleById(@Payload() data: TcpRoleParams): Promise<RoleDetail | null> {
+  @MessagePattern('role.findById')
+  async findById(@Payload() data: { roleId: string }): Promise<RoleDetail | null> {
     this.logger.debug(`TCP role detail request: ${data.roleId}`);
 
     try {
@@ -102,13 +99,15 @@ export class RoleTcpController {
   /**
    * 역할 정보 수정
    */
-  @MessagePattern(RoleTcpPatterns.UPDATE)
-  async updateRole(@Payload() data: TcpRoleUpdateParams): Promise<TcpOperationResponse> {
+  @MessagePattern('role.update')
+  async update(
+    @Payload() data: { roleId: string; updateData: UpdateRole }
+  ): Promise<TcpOperationResponse> {
     this.logger.log('TCP role update requested', { roleId: data.roleId });
 
     try {
       await this.roleService.updateRole(data.roleId, data.updateData);
-      this.logger.log(`TCP role updated successfully: ${data.roleId}`);
+      this.logger.log('TCP role update completed', { roleId: data.roleId });
       return { success: true };
     } catch (error: unknown) {
       this.logger.error('TCP role update failed', {
@@ -122,13 +121,13 @@ export class RoleTcpController {
   /**
    * 역할 삭제 (소프트 삭제)
    */
-  @MessagePattern(RoleTcpPatterns.DELETE)
-  async deleteRole(@Payload() data: TcpRoleParams): Promise<TcpOperationResponse> {
+  @MessagePattern('role.delete')
+  async delete(@Payload() data: { roleId: string }): Promise<TcpOperationResponse> {
     this.logger.log('TCP role deletion requested', { roleId: data.roleId });
 
     try {
       await this.roleService.deleteRole(data.roleId);
-      this.logger.log(`TCP role deleted successfully: ${data.roleId}`);
+      this.logger.log('TCP role deletion completed', { roleId: data.roleId });
       return { success: true };
     } catch (error: unknown) {
       this.logger.error('TCP role deletion failed', {
@@ -142,8 +141,8 @@ export class RoleTcpController {
   /**
    * 서비스 ID로 역할 목록 조회
    */
-  @MessagePattern(RoleTcpPatterns.FIND_BY_SERVICE_IDS)
-  async findRolesByServiceIds(@Payload() data: TcpMultiServiceParams): Promise<RoleEntity[]> {
+  @MessagePattern('role.findByServiceIds')
+  async findByServiceIds(@Payload() data: { serviceIds: string[] }): Promise<RoleEntity[]> {
     this.logger.debug('TCP roles by services request', {
       serviceCount: data.serviceIds.length,
     });
@@ -164,8 +163,8 @@ export class RoleTcpController {
   /**
    * 역할 존재 여부 확인
    */
-  @MessagePattern(RoleTcpPatterns.EXISTS)
-  async checkRoleExists(@Payload() data: TcpRoleParams): Promise<boolean> {
+  @MessagePattern('role.exists')
+  async exists(@Payload() data: { roleId: string }): Promise<boolean> {
     this.logger.debug(`TCP role existence check: ${data.roleId}`);
 
     try {
