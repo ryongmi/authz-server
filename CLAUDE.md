@@ -118,362 +118,241 @@ throw new BadRequestException({
 
 ## 표준화된 도메인 API 설계 패턴
 
-krgeobuk 생태계의 모든 도메인 모듈에서 일관된 API 구조와 서비스 계층 설계를 위한 표준 패턴입니다.
+krgeobuk 생태계의 모든 도메인 모듈에서 일관된 API 구조를 위한 표준 패턴입니다. 
 
-### 기본 CRUD API 구조
+### API 구조 표준
 
-모든 도메인 컨트롤러는 다음 5가지 기본 API를 필수로 구현해야 합니다:
+도메인 타입에 따라 다음 두 가지 표준 구조를 적용합니다:
 
-#### 1. 표준 API 엔드포인트
+#### 일반 도메인 (permission, role 등)
 
 ```typescript
-@Controller('[domain]s')
-export class [Domain]Controller {
+GET    /{domain}s                    # 목록 조회 (검색)
+POST   /{domain}s                    # 생성
+GET    /{domain}s/:id                # 상세 조회
+PATCH  /{domain}s/:id                # 수정
+DELETE /{domain}s/:id                # 삭제
+GET    /{domain}s/:id/summary        # 요약 정보 (신규) - 현재는 구현 X
+```
+
+**구현 예시:**
+```typescript
+@Controller('permissions')
+export class PermissionController {
   
-  // 1. 목록 조회 (검색/페이지네이션)
   @Get()
-  async search[Domain]s(
-    @Query() query: [Domain]SearchQueryDto,
+  async searchPermissions(
+    @Query() query: PermissionSearchQueryDto,
     @CurrentJwt() jwt: JwtPayload
-  ): Promise<[Domain]PaginatedSearchResultDto> {
-    return this.[domain]Service.search[Domain]s(query);
+  ): Promise<PermissionPaginatedSearchResultDto> {
+    return this.permissionService.searchPermissions(query);
   }
 
-  // 2. 상세 조회
-  @Get(':id') 
-  async get[Domain]ById(
-    @Param('id') id: string,
-    @CurrentJwt() jwt: JwtPayload
-  ): Promise<[Domain]DetailDto> {
-    return this.[domain]Service.get[Domain]ById(id);
-  }
-
-  // 3. 생성
   @Post()
-  async create[Domain](
-    @Body() dto: Create[Domain]Dto,
+  async createPermission(
+    @Body() dto: CreatePermissionDto,
     @CurrentJwt() jwt: JwtPayload
   ): Promise<void> {
-    await this.[domain]Service.create[Domain](dto);
+    await this.permissionService.createPermission(dto);
   }
 
-  // 4. 수정
-  @Patch(':id')
-  async update[Domain](
-    @Param('id') id: string,
-    @Body() dto: Update[Domain]Dto,
+  @Get(':permissionId')
+  async getPermissionById(
+    @Param() params: PermissionIdParamsDto,
+    @CurrentJwt() jwt: JwtPayload
+  ): Promise<PermissionDetailDto> {
+    return this.permissionService.getPermissionById(params.permissionId);
+  }
+
+  @Patch(':permissionId')
+  async updatePermission(
+    @Param() params: PermissionIdParamsDto,
+    @Body() dto: UpdatePermissionDto,
     @CurrentJwt() jwt: JwtPayload
   ): Promise<void> {
-    await this.[domain]Service.update[Domain](id, dto);
+    await this.permissionService.updatePermission(params.permissionId, dto);
   }
 
-  // 5. 삭제
-  @Delete(':id')
-  async delete[Domain](
-    @Param('id') id: string,
+  @Delete(':permissionId')
+  async deletePermission(
+    @Param() params: PermissionIdParamsDto,
     @CurrentJwt() jwt: JwtPayload
   ): Promise<void> {
-    await this.[domain]Service.delete[Domain](id);
+    await this.permissionService.deletePermission(params.permissionId);
+  }
+
+  @Get(':permissionId/summary')
+  async getPermissionSummary(
+    @Param() params: PermissionIdParamsDto,
+    @CurrentJwt() jwt: JwtPayload
+  ): Promise<PermissionSummaryDto> {
+    return this.permissionService.getPermissionSummary(params.permissionId);
   }
 }
 ```
 
-#### 2. 도메인별 추가 API
-
-기본 5개 API 외에 도메인별 특수 요구사항이 있는 경우 추가 API를 구현합니다:
+#### 중간테이블 도메인 (role-permission, service-visible-role, user-role 등)
 
 ```typescript
-// 예시: Role 도메인의 추가 API
-@Get('service/:serviceId/roles')
-async getRolesByService(@Param('serviceId') serviceId: string) { }
-
-@Post(':roleId/permissions/:permissionId')
-async assignPermissionToRole(@Param('roleId') roleId: string, @Param('permissionId') permissionId: string) { }
+GET    /{entityA}s/:idA/{entityB}s           # A의 B 목록
+GET    /{entityB}s/:idB/{entityA}s           # B의 A 목록
+GET    /{entityA}s/:idA/{entityB}s/:idB/exists # 관계 존재 확인
+POST   /{entityA}s/:idA/{entityB}s/:idB      # 관계 생성
+DELETE /{entityA}s/:idA/{entityB}s/:idB      # 관계 삭제
+POST   /{entityA}s/:idA/{entityB}s/batch     # 배치 할당
+PUT    /{entityA}s/:idA/{entityB}s           # 완전 교체
 ```
 
-### 서비스 계층 설계 패턴
-
-#### 1. 서비스 메서드 계층 구조
-
+**구현 예시 (role-permission):**
 ```typescript
-@Injectable()
-export class [Domain]Service {
-  private readonly logger = new Logger([Domain]Service.name);
+@Controller()
+export class RolePermissionController {
 
-  constructor(
-    private readonly [domain]Repo: [Domain]Repository,
-    // 필요한 의존성들...
-  ) {}
-
-  // ==================== PUBLIC METHODS ====================
-
-  // Level 1: 기본 Building Blocks (재사용 가능한 기본 메서드들)
-  async findById(id: string): Promise<[Domain]Entity | null> {
-    return this.[domain]Repo.findOneById(id);
+  // 양방향 관계 조회
+  @Get('roles/:roleId/permissions')
+  async getPermissionsByRole(
+    @Param() params: RoleIdParamsDto,
+    @CurrentJwt() jwt: JwtPayload
+  ): Promise<string[]> {
+    return this.rolePermissionService.getPermissionIds(params.roleId);
   }
 
-  async findByIdOrFail(id: string): Promise<[Domain]Entity> {
-    const entity = await this.[domain]Repo.findOneById(id);
-    if (!entity) {
-      this.logger.debug('[Domain] not found', { [domain]Id: id });
-      throw [Domain]Exception.[domain]NotFound();
-    }
-    return entity;
+  @Get('permissions/:permissionId/roles')
+  async getRolesByPermission(
+    @Param() params: PermissionIdParamsDto,
+    @CurrentJwt() jwt: JwtPayload
+  ): Promise<string[]> {
+    return this.rolePermissionService.getRoleIds(params.permissionId);
   }
 
-  async findByServiceIds(serviceIds: string[]): Promise<[Domain]Entity[]> {
-    return this.[domain]Repo.find({ where: { serviceId: In(serviceIds) } });
+  // 관계 존재 확인
+  @Get('roles/:roleId/permissions/:permissionId/exists')
+  async checkRolePermissionExists(
+    @Param() params: RolePermissionParamsDto,
+    @CurrentJwt() jwt: JwtPayload
+  ): Promise<boolean> {
+    return this.rolePermissionService.exists(params.roleId, params.permissionId);
   }
 
-  async findByAnd(filter: [Domain]Filter = {}): Promise<[Domain]Entity[]> {
-    // AND 조건 검색 로직
+  // 관계 생성/삭제
+  @Post('roles/:roleId/permissions/:permissionId')
+  async assignRolePermission(
+    @Param() params: RolePermissionParamsDto,
+    @CurrentJwt() jwt: JwtPayload
+  ): Promise<void> {
+    await this.rolePermissionService.assignRolePermission({
+      roleId: params.roleId,
+      permissionId: params.permissionId,
+    });
   }
 
-  async findByOr(filter: [Domain]Filter = {}): Promise<[Domain]Entity[]> {
-    // OR 조건 검색 로직
+  @Delete('roles/:roleId/permissions/:permissionId')
+  async revokeRolePermission(
+    @Param() params: RolePermissionParamsDto,
+    @CurrentJwt() jwt: JwtPayload
+  ): Promise<void> {
+    await this.rolePermissionService.revokeRolePermission(params.roleId, params.permissionId);
   }
 
-  // Level 2: 컨트롤러 매칭 메서드 (Level 1 조합 + 비즈니스 로직)
-  async search[Domain]s(query: [Domain]SearchQueryDto): Promise<PaginatedResult<[Domain]SearchResult>> {
-    const entities = await this.[domain]Repo.search[Domain]s(query);
-    
-    if (entities.items.length === 0) {
-      return { items: [], pageInfo: entities.pageInfo };
-    }
-
-    try {
-      // 외부 데이터 조합 (TCP 통신 등)
-      const [externalData1, externalData2] = await Promise.all([
-        this.getExternalData1(),
-        this.getExternalData2(),
-      ]);
-
-      const items = this.build[Domain]SearchResults(entities.items, externalData1, externalData2);
-      return { items, pageInfo: entities.pageInfo };
-    } catch (error: unknown) {
-      // 폴백 처리
-      this.logger.warn('External service communication failed, using fallback data', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      
-      const items = this.buildFallback[Domain]SearchResults(entities.items);
-      return { items, pageInfo: entities.pageInfo };
-    }
+  // 배치 처리
+  @Post('roles/:roleId/permissions/batch')
+  async assignMultiplePermissions(
+    @Param() params: RoleIdParamsDto,
+    @Body() dto: PermissionIdsDto,
+    @CurrentJwt() jwt: JwtPayload
+  ): Promise<void> {
+    await this.rolePermissionService.assignMultiplePermissions(params.roleId, dto.permissionIds);
   }
 
-  async get[Domain]ById(id: string): Promise<[Domain]Detail> {
-    const entity = await this.findByIdOrFail(id);
-
-    try {
-      // 외부 데이터와 조합하여 상세 정보 구축
-      const [service, relatedData] = await Promise.all([
-        this.getServiceById(entity.serviceId),
-        this.getRelatedData(id),
-      ]);
-
-      return {
-        id: entity.id,
-        // 도메인별 필드들...
-        service,
-        relatedData,
-      };
-    } catch (error: unknown) {
-      // 폴백 처리
-      this.logger.warn('Failed to enrich [domain] with external data, returning basic info', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        [domain]Id: id,
-      });
-
-      return {
-        id: entity.id,
-        // 기본 필드들...
-        service: { id: '', name: 'Service unavailable' },
-        relatedData: [],
-      };
-    }
-  }
-
-  async create[Domain](dto: Create[Domain]Dto, transactionManager?: EntityManager): Promise<void> {
-    try {
-      // 1. 사전 검증 (비즈니스 규칙)
-      await this.validateCreate[Domain](dto);
-
-      // 2. 엔티티 생성 및 저장
-      const entity = new [Domain]Entity();
-      Object.assign(entity, dto);
-      await this.[domain]Repo.saveEntity(entity, transactionManager);
-
-      // 3. 성공 로깅
-      this.logger.log('[Domain] created successfully', {
-        [domain]Id: entity.id,
-        // 관련 컨텍스트...
-      });
-    } catch (error: unknown) {
-      // 4. 에러 처리
-      if (error instanceof HttpException) {
-        throw error;
-      }
-
-      this.logger.error('[Domain] creation failed', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        // 컨텍스트...
-      });
-
-      throw [Domain]Exception.[domain]CreateError();
-    }
-  }
-
-  async update[Domain](id: string, dto: Update[Domain]Dto, transactionManager?: EntityManager): Promise<void> {
-    try {
-      // 1. 존재 여부 확인
-      const entity = await this.findByIdOrFail(id);
-
-      // 2. 사전 검증 (변경 사항 검증)
-      await this.validateUpdate[Domain](entity, dto);
-
-      // 3. 업데이트 실행
-      Object.assign(entity, dto);
-      await this.[domain]Repo.updateEntity(entity, transactionManager);
-
-      // 4. 성공 로깅
-      this.logger.log('[Domain] updated successfully', {
-        [domain]Id: id,
-        updatedFields: Object.keys(dto),
-      });
-    } catch (error: unknown) {
-      // 에러 처리
-      if (error instanceof HttpException) {
-        throw error;
-      }
-
-      this.logger.error('[Domain] update failed', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        [domain]Id: id,
-      });
-
-      throw [Domain]Exception.[domain]UpdateError();
-    }
-  }
-
-  async delete[Domain](id: string): Promise<UpdateResult> {
-    try {
-      // 1. 존재 여부 확인
-      const entity = await this.findByIdOrFail(id);
-
-      // 2. 삭제 가능 여부 검증 (관련 데이터 확인)
-      await this.validateDelete[Domain](entity);
-
-      // 3. 소프트 삭제 실행
-      const result = await this.[domain]Repo.softDelete(id);
-
-      // 4. 성공 로깅
-      this.logger.log('[Domain] deleted successfully', {
-        [domain]Id: id,
-      });
-
-      return result;
-    } catch (error: unknown) {
-      // 에러 처리
-      if (error instanceof HttpException) {
-        throw error;
-      }
-
-      this.logger.error('[Domain] deletion failed', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        [domain]Id: id,
-      });
-
-      throw [Domain]Exception.[domain]DeleteError();
-    }
-  }
-
-  // ==================== PRIVATE HELPER METHODS ====================
-
-  // Level 3: Private Helper Methods
-  private async getExternalData(): Promise<ExternalData> {
-    // TCP 통신 등 외부 데이터 조회
-  }
-
-  private build[Domain]SearchResults(): [Domain]SearchResult[] {
-    // 검색 결과 데이터 변환
-  }
-
-  private buildFallback[Domain]SearchResults(): [Domain]SearchResult[] {
-    // 폴백 검색 결과 구축
-  }
-
-  private async validateCreate[Domain](dto: Create[Domain]Dto): Promise<void> {
-    // 생성 전 비즈니스 규칙 검증
-  }
-
-  private async validateUpdate[Domain](entity: [Domain]Entity, dto: Update[Domain]Dto): Promise<void> {
-    // 수정 전 비즈니스 규칙 검증
-  }
-
-  private async validateDelete[Domain](entity: [Domain]Entity): Promise<void> {
-    // 삭제 전 비즈니스 규칙 검증
+  // 완전 교체
+  @Put('roles/:roleId/permissions')
+  async replaceRolePermissions(
+    @Param() params: RoleIdParamsDto,
+    @Body() dto: PermissionIdsDto,
+    @CurrentJwt() jwt: JwtPayload
+  ): Promise<void> {
+    await this.rolePermissionService.replaceRolePermissions({
+      roleId: params.roleId,
+      permissionIds: dto.permissionIds,
+    });
   }
 }
 ```
 
-### 컨트롤러 ↔ 서비스 매칭 규칙
+### 설계 원칙
 
-#### 1. 함수명 1:1 매칭
+#### 1. 도메인 경계 준수
+- **각 도메인은 자신의 리소스만 관리**: `/permissions`는 permission 모듈, `/roles`는 role 모듈
+- **도메인 간 조회는 TCP 통신 활용**: 다른 도메인 데이터가 필요한 경우 마이크로서비스 통신
+- **서비스별 조회는 별도 처리**: `/services/:id/permissions` 같은 API는 service 도메인에서 구현
 
-```typescript
-// Controller Method          →  Service Method
-search[Domain]s()            →  search[Domain]s()
-get[Domain]ById()            →  get[Domain]ById()  
-create[Domain]()             →  create[Domain]()
-update[Domain]()             →  update[Domain]()
-delete[Domain]()             →  delete[Domain]()
-```
+#### 2. RESTful 설계 원칙
+- **리소스 중심 URL**: 동사보다는 명사 사용
+- **HTTP 메서드 의미 준수**: GET(조회), POST(생성), PATCH(부분수정), PUT(완전교체), DELETE(삭제)
+- **일관된 네이밍**: 복수형 리소스명 사용 (`/permissions`, `/roles`)
 
-#### 2. 반환 타입 일관성
+#### 3. 중간테이블 특화 패턴
+- **양방향 관계 지원**: A→B, B→A 모두 제공
+- **배치 처리 지원**: 성능 최적화를 위한 bulk 연산
+- **완전 교체 기능**: PUT을 통한 관계 재설정
+- **존재 확인 API**: 관계 유무 빠른 확인
 
-```typescript
-// Controller: DTO 타입 사용
-async get[Domain]ById(): Promise<[Domain]DetailDto> {
-  return this.[domain]Service.get[Domain]ById(id);
-}
+### 구현 체크리스트
 
-// Service: 인터페이스 타입 사용  
-async get[Domain]ById(): Promise<[Domain]Detail> {
-  // 비즈니스 로직...
-  return result; // Entity가 인터페이스를 구현
-}
-```
+#### 일반 도메인 개발 시
+- [ ] 6가지 표준 API 모두 구현 (search, create, get, update, delete, summary)
+- [ ] 일관된 HTTP 메서드 사용
+- [ ] 적절한 응답 DTO 및 에러 처리
+- [ ] 도메인 경계 내에서만 API 구현
+- [ ] summary API를 통한 부가 정보 제공
 
-### 적용 체크리스트
+#### 중간테이블 도메인 개발 시
+- [ ] 양방향 관계 조회 API (A→B, B→A)
+- [ ] 관계 존재 확인 API
+- [ ] 개별 관계 생성/삭제 API
+- [ ] 배치 할당 API (POST batch)
+- [ ] 완전 교체 API (PUT)
+- [ ] ID 기반 최적화된 조회 (전체 엔티티 대신 ID만)
+- [ ] 적절한 인덱싱 및 성능 최적화
 
-새로운 도메인 모듈 개발 시 다음 항목들을 확인:
-
-#### 컨트롤러 구조
-- [ ] 5가지 기본 API 엔드포인트 구현 (search, get, create, update, delete)
-- [ ] 일관된 함수명 패턴 적용
-- [ ] 공통 패키지의 Response, Error, DTO 사용
-- [ ] 적절한 Swagger 문서화
-- [ ] AccessTokenGuard 적용
-
-#### 서비스 구조  
-- [ ] PUBLIC METHODS와 PRIVATE HELPER METHODS 섹션 분리
-- [ ] 기본 Building Blocks 메서드 구현 (findById, findByIdOrFail 등)
-- [ ] 컨트롤러 매칭 메서드 구현 (Level 2)
-- [ ] Private Helper Methods 구현 (Level 3)
+#### 공통 요구사항
+- [ ] JWT 인증 가드 적용
+- [ ] Swagger 문서화 완료
+- [ ] 공통 패키지 활용 (Response, Error, DTO)
 - [ ] 적절한 로깅 및 에러 처리
+- [ ] TCP 컨트롤러 구현 (마이크로서비스 통신용)
 
-#### 일관성 검증
-- [ ] 컨트롤러-서비스 함수명 1:1 매칭
-- [ ] 반환 타입 일관성 (DTO vs Interface)
-- [ ] 공통 패키지 활용도
-- [ ] TCP 컨트롤러 구현 (필요시)
+### 금지사항
 
-#### 확장성 고려
-- [ ] 도메인별 추가 API 설계 (필요시)
-- [ ] 기본 메서드 재사용 패턴 적용
-- [ ] 외부 서비스 통신 및 폴백 처리
+#### ❌ 도메인 경계 위반
+```typescript
+// 잘못된 예시 - permission 모듈에서 service 라우팅
+@Get('services/:serviceId/permissions')  // ❌ 금지
 
-이 패턴을 따르면 모든 도메인 모듈에서 일관된 API 설계와 서비스 구조를 유지하면서도 각 도메인의 특수 요구사항을 유연하게 수용할 수 있습니다.
+// 올바른 방법 - 쿼리 파라미터 사용 또는 service 모듈에서 구현
+@Get('permissions?serviceId=xxx')         // ✅ 권장
+```
+
+#### ❌ 불필요한 검색 API (중간테이블)
+```typescript
+// 잘못된 예시 - 중간테이블에 검색 API
+@Get('role-permissions')                  // ❌ 금지
+
+// 올바른 방법 - 관계 조회 API 사용
+@Get('roles/:roleId/permissions')         // ✅ 권장
+```
+
+#### ❌ 비표준 API 패턴
+```typescript
+// 잘못된 예시 - 표준을 벗어나는 API
+@Delete('roles/:roleId/permissions/batch') // ❌ 금지 (표준에 없음)
+@Get('roles/:roleId/permissions/count')    // ❌ 금지 (추후 처리 예정)
+
+// 올바른 방법 - 표준 패턴 사용
+@Put('roles/:roleId/permissions')          // ✅ 빈 배열로 전체 삭제
+```
+
+이 표준을 준수하면 모든 도메인 모듈에서 일관되고 예측 가능한 API 구조를 유지할 수 있으며, 개발자 경험과 유지보수성이 크게 향상됩니다.
 
 ## NestJS 서버 공통 코딩 컨벤션
 

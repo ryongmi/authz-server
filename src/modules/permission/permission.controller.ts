@@ -72,6 +72,33 @@ export class PermissionController {
     return await this.permissionService.searchPermissions(query);
   }
 
+  @Post()
+  @HttpCode(PermissionResponse.CREATE_SUCCESS.statusCode)
+  @SwaggerApiOperation({ summary: '권한 생성', description: '새로운 권한을 생성합니다.' })
+  @SwaggerApiBody({ dto: CreatePermissionDto, description: '권한 생성 데이터' })
+  @SwaggerApiOkResponse({
+    status: PermissionResponse.CREATE_SUCCESS.statusCode,
+    description: PermissionResponse.CREATE_SUCCESS.message,
+  })
+  @SwaggerApiErrorResponse({
+    status: PermissionError.PERMISSION_CREATE_ERROR.statusCode,
+    description: PermissionError.PERMISSION_CREATE_ERROR.message,
+  })
+  @SwaggerApiErrorResponse({
+    status: PermissionError.PERMISSION_ALREADY_EXISTS.statusCode,
+    description: PermissionError.PERMISSION_ALREADY_EXISTS.message,
+  })
+  @UseGuards(AccessTokenGuard)
+  @Serialize({
+    ...PermissionResponse.CREATE_SUCCESS,
+  })
+  async createPermission(
+    @Body() dto: CreatePermissionDto,
+    @CurrentJwt() jwt: JwtPayload
+  ): Promise<void> {
+    await this.permissionService.createPermission(dto);
+  }
+
   @Get(':permissionId')
   @HttpCode(PermissionResponse.FETCH_SUCCESS.statusCode)
   @SwaggerApiOperation({ summary: '권한 상세 조회', description: 'ID로 특정 권한을 조회합니다.' })
@@ -104,33 +131,6 @@ export class PermissionController {
     @CurrentJwt() jwt: JwtPayload
   ): Promise<PermissionDetailDto> {
     return await this.permissionService.getPermissionById(params.permissionId);
-  }
-
-  @Post()
-  @HttpCode(PermissionResponse.CREATE_SUCCESS.statusCode)
-  @SwaggerApiOperation({ summary: '권한 생성', description: '새로운 권한을 생성합니다.' })
-  @SwaggerApiBody({ dto: CreatePermissionDto, description: '권한 생성 데이터' })
-  @SwaggerApiOkResponse({
-    status: PermissionResponse.CREATE_SUCCESS.statusCode,
-    description: PermissionResponse.CREATE_SUCCESS.message,
-  })
-  @SwaggerApiErrorResponse({
-    status: PermissionError.PERMISSION_CREATE_ERROR.statusCode,
-    description: PermissionError.PERMISSION_CREATE_ERROR.message,
-  })
-  @SwaggerApiErrorResponse({
-    status: PermissionError.PERMISSION_ALREADY_EXISTS.statusCode,
-    description: PermissionError.PERMISSION_ALREADY_EXISTS.message,
-  })
-  @UseGuards(AccessTokenGuard)
-  @Serialize({
-    ...PermissionResponse.CREATE_SUCCESS,
-  })
-  async createPermission(
-    @Body() dto: CreatePermissionDto,
-    @CurrentJwt() jwt: JwtPayload
-  ): Promise<void> {
-    await this.permissionService.createPermission(dto);
   }
 
   @Patch(':permissionId')
