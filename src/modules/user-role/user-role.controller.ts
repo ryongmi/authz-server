@@ -1,4 +1,14 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+  Put,
+  UseGuards,
+} from '@nestjs/common';
 
 import { Serialize } from '@krgeobuk/core/decorators';
 import {
@@ -16,8 +26,9 @@ import { AccessTokenGuard } from '@krgeobuk/jwt/guards';
 import { UserIdParamsDto } from '@krgeobuk/shared/user/dtos';
 import { RoleIdParamsDto } from '@krgeobuk/shared/role/dtos';
 import { UserRoleParamsDto } from '@krgeobuk/shared/user-role/dtos';
-import { RoleIdsDto } from '@krgeobuk/authz-relations/user-role/dtos';
-import { UserRoleResponse, UserRoleError } from '@krgeobuk/authz-relations/user-role';
+import { RoleIdsDto } from '@krgeobuk/user-role/dtos';
+import { UserRoleError } from '@krgeobuk/user-role/exception';
+import { UserRoleResponse } from '@krgeobuk/user-role/response';
 
 import { UserRoleService } from './user-role.service.js';
 
@@ -378,3 +389,4 @@ export class UserRoleController {
     });
   }
 }
+
