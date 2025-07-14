@@ -2,7 +2,10 @@ import { Injectable, Logger, HttpException } from '@nestjs/common';
 
 import { In } from 'typeorm';
 
-import { UserRoleException } from '@krgeobuk/authz-relations/user-role/exception';
+import { UserRoleException } from '@krgeobuk/user-role/exception';
+import type { JunctionTableOperationResult } from '@krgeobuk/core/interfaces';
+
+export type UserRoleBatchAssignmentResult = JunctionTableOperationResult;
 
 import { UserRoleEntity } from './entities/user-role.entity.js';
 import { UserRoleRepository } from './user-role.repository.js';
@@ -115,7 +118,7 @@ export class UserRoleService {
           userId,
           roleId,
         });
-        throw UserRoleException.alreadyAssigned();
+        throw UserRoleException.userRoleAlreadyExists();
       }
 
       const entity = new UserRoleEntity();
@@ -155,7 +158,7 @@ export class UserRoleService {
           userId,
           roleId,
         });
-        throw UserRoleException.notAssigned();
+        throw UserRoleException.userRoleNotFound();
       }
 
       this.logger.log('User role revoked successfully', {
@@ -180,17 +183,40 @@ export class UserRoleService {
   /**
    * 여러 역할 할당 (배치)
    */
-  async assignMultipleRoles(userId: string, roleIds: string[]): Promise<void> {
+  async assignMultipleRoles(userId: string, roleIds: string[]): Promise<UserRoleBatchAssignmentResult> {
     try {
-      const entities = roleIds.map((roleId) => {
+      // 1. 기존 관계 확인
+      const existingRoles = await this.getRoleIds(userId);
+      const duplicates = roleIds.filter(roleId => existingRoles.includes(roleId));
+      const newRoleIds = roleIds.filter(roleId => !existingRoles.includes(roleId));
+
+      if (newRoleIds.length === 0) {
+        this.logger.warn('All roles already assigned', {
+          userId,
+          duplicates: duplicates.length,
+        });
+        
+        return {
+          success: false,
+          affected: 0,
+          details: {
+            assigned: 0,
+            skipped: duplicates.length,
+            duplicates,
+          },
+        };
+      }
+
+      // 2. 새로운 관계 생성
+      const entities = newRoleIds.map((roleId) => {
         const entity = new UserRoleEntity();
         entity.userId = userId;
         entity.roleId = roleId;
         return entity;
       });
 
-      // 배치 삽입 (중복 시 무시)
-      await this.userRoleRepo
+      // 3. 배치 삽입
+      const result = await this.userRoleRepo
         .createQueryBuilder()
         .insert()
         .into(UserRoleEntity)
@@ -198,10 +224,23 @@ export class UserRoleService {
         .orIgnore() // MySQL: ON DUPLICATE KEY UPDATE (무시)
         .execute();
 
+      const assigned = result.raw.affectedRows || newRoleIds.length;
+
       this.logger.log('Multiple user roles assigned successfully', {
         userId,
-        roleCount: roleIds.length,
+        assigned,
+        skipped: duplicates.length,
       });
+
+      return {
+        success: true,
+        affected: assigned,
+        details: {
+          assigned,
+          skipped: duplicates.length,
+          duplicates: duplicates.length > 0 ? duplicates : undefined,
+        },
+      };
     } catch (error: unknown) {
       this.logger.error('Multiple user roles assignment failed', {
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -316,4 +355,5 @@ export class UserRoleService {
       throw UserRoleException.replaceError();
     }
   }
+
 }
