@@ -85,13 +85,15 @@ export class RolePermissionRepository extends BaseRepository<RolePermissionEntit
   }
 
   /**
-   * 역할-권한 관계 존재 확인
+   * 역할-권한 관계 존재 확인 (최적화된 쿼리)
    */
   async existsRolePermission(roleId: string, permissionId: string): Promise<boolean> {
-    const count = await this.createQueryBuilder('rp')
+    const result = await this.createQueryBuilder('rp')
+      .select('1')
       .where('rp.roleId = :roleId AND rp.permissionId = :permissionId', { roleId, permissionId })
-      .getCount();
+      .limit(1)
+      .getRawOne();
 
-    return count > 0;
+    return !!result;
   }
 }
