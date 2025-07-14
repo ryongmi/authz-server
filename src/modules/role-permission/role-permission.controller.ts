@@ -23,14 +23,12 @@ import {
 import { JwtPayload } from '@krgeobuk/jwt/interfaces';
 import { CurrentJwt } from '@krgeobuk/jwt/decorators';
 import { AccessTokenGuard } from '@krgeobuk/jwt/guards';
-import { PermissionIdParamsDto } from '@krgeobuk/shared/permission/dtos';
 import { RoleIdParamsDto } from '@krgeobuk/shared/role/dtos';
-import { RolePermissionParamsDto } from '@krgeobuk/shared/role-permission/dtos';
-import { PermissionIdsDto } from '@krgeobuk/authz-relations/role-permission/dtos';
-import {
-  RolePermissionResponse,
-  RolePermissionError,
-} from '@krgeobuk/authz-relations/role-permission';
+import { PermissionIdParamsDto } from '@krgeobuk/shared/permission';
+import { RolePermissionParamsDto } from '@krgeobuk/shared/role-permission';
+import { PermissionIdsDto } from '@krgeobuk/role-permission/dtos';
+import { RolePermissionError } from '@krgeobuk/role-permission/exception';
+import { RolePermissionResponse } from '@krgeobuk/role-permission/response';
 
 import { RolePermissionService } from './role-permission.service.js';
 
@@ -62,8 +60,8 @@ export class RolePermissionController {
     isArray: true,
   })
   @SwaggerApiErrorResponse({
-    status: RolePermissionError.ROLE_PERMISSION_FETCH_ERROR.statusCode,
-    description: RolePermissionError.ROLE_PERMISSION_FETCH_ERROR.message,
+    status: RolePermissionError.FETCH_ERROR.statusCode,
+    description: RolePermissionError.FETCH_ERROR.message,
   })
   @Serialize({
     ...RolePermissionResponse.FETCH_SUCCESS,
@@ -93,8 +91,8 @@ export class RolePermissionController {
     isArray: true,
   })
   @SwaggerApiErrorResponse({
-    status: RolePermissionError.ROLE_PERMISSION_FETCH_ERROR.statusCode,
-    description: RolePermissionError.ROLE_PERMISSION_FETCH_ERROR.message,
+    status: RolePermissionError.FETCH_ERROR.statusCode,
+    description: RolePermissionError.FETCH_ERROR.message,
   })
   @Serialize({
     ...RolePermissionResponse.FETCH_SUCCESS,
@@ -129,8 +127,8 @@ export class RolePermissionController {
     type: 'boolean',
   })
   @SwaggerApiErrorResponse({
-    status: RolePermissionError.ROLE_PERMISSION_FETCH_ERROR.statusCode,
-    description: RolePermissionError.ROLE_PERMISSION_FETCH_ERROR.message,
+    status: RolePermissionError.FETCH_ERROR.statusCode,
+    description: RolePermissionError.FETCH_ERROR.message,
   })
   @Serialize({
     ...RolePermissionResponse.FETCH_SUCCESS,
@@ -167,12 +165,12 @@ export class RolePermissionController {
     description: RolePermissionResponse.ASSIGN_SUCCESS.message,
   })
   @SwaggerApiErrorResponse({
-    status: RolePermissionError.ROLE_PERMISSION_ASSIGN_ERROR.statusCode,
-    description: RolePermissionError.ROLE_PERMISSION_ASSIGN_ERROR.message,
+    status: RolePermissionError.ASSIGN_ERROR.statusCode,
+    description: RolePermissionError.ASSIGN_ERROR.message,
   })
   @SwaggerApiErrorResponse({
-    status: RolePermissionError.ROLE_PERMISSION_ALREADY_EXISTS.statusCode,
-    description: RolePermissionError.ROLE_PERMISSION_ALREADY_EXISTS.message,
+    status: RolePermissionError.ALREADY_EXISTS.statusCode,
+    description: RolePermissionError.ALREADY_EXISTS.message,
   })
   @Serialize({
     ...RolePermissionResponse.ASSIGN_SUCCESS,
@@ -211,8 +209,8 @@ export class RolePermissionController {
     description: RolePermissionError.ROLE_PERMISSION_NOT_FOUND.message,
   })
   @SwaggerApiErrorResponse({
-    status: RolePermissionError.ROLE_PERMISSION_REVOKE_ERROR.statusCode,
-    description: RolePermissionError.ROLE_PERMISSION_REVOKE_ERROR.message,
+    status: RolePermissionError.REVOKE_ERROR.statusCode,
+    description: RolePermissionError.REVOKE_ERROR.message,
   })
   async revokeRolePermission(
     @Param() params: RolePermissionParamsDto,
