@@ -2,7 +2,8 @@ import { HttpException, Injectable, Logger } from '@nestjs/common';
 
 import { In } from 'typeorm';
 
-import { RolePermissionException } from '@krgeobuk/authz-relations/role-permission/exception';
+import { RolePermissionException } from '@krgeobuk/role-permission/exception';
+import type { RolePermissionBatchAssignmentResult } from '@krgeobuk/core/interfaces';
 
 import { RolePermissionEntity } from './entities/role-permission.entity.js';
 import { RolePermissionRepository } from './role-permission.repository.js';
@@ -105,7 +106,7 @@ export class RolePermissionService {
           roleId: dto.roleId,
           permissionId: dto.permissionId,
         });
-        throw RolePermissionException.alreadyAssigned();
+        throw RolePermissionException.rolePermissionAlreadyExists();
       }
 
       const entity = new RolePermissionEntity();
@@ -144,7 +145,7 @@ export class RolePermissionService {
           roleId,
           permissionId,
         });
-        throw RolePermissionException.notAssigned();
+        throw RolePermissionException.rolePermissionNotFound();
       }
 
       this.logger.log('Role permission revoked successfully', {
@@ -169,30 +170,65 @@ export class RolePermissionService {
   // ==================== 배치 처리 메서드 ====================
 
   /**
-   * 여러 권한 할당 (배치)
+   * 여러 권한 할당 (배치) - 개선된 로직
    */
-  async assignMultiplePermissions(dto: { roleId: string; permissionIds: string[] }): Promise<void> {
+  async assignMultiplePermissions(dto: { roleId: string; permissionIds: string[] }): Promise<RolePermissionBatchAssignmentResult> {
     try {
-      const entities = dto.permissionIds.map((permissionId) => {
+      // 1. 기존 할당 권한 조회
+      const existingPermissions = await this.getPermissionIds(dto.roleId);
+      const newPermissions = dto.permissionIds.filter(id => !existingPermissions.includes(id));
+      const duplicates = dto.permissionIds.filter(id => existingPermissions.includes(id));
+      
+      if (newPermissions.length === 0) {
+        this.logger.warn('No new permissions to assign - all already exist', {
+          roleId: dto.roleId,
+          requestedCount: dto.permissionIds.length,
+          duplicateCount: duplicates.length,
+        });
+        
+        return {
+          success: true,
+          affected: 0,
+          details: {
+            assigned: 0,
+            skipped: duplicates.length,
+            duplicates,
+            newAssignments: [],
+            roleId: dto.roleId,
+            assignedPermissions: [],
+          },
+        };
+      }
+
+      // 2. 새로운 권한만 할당
+      const entities = newPermissions.map((permissionId) => {
         const entity = new RolePermissionEntity();
         entity.roleId = dto.roleId;
         entity.permissionId = permissionId;
         return entity;
       });
 
-      // 배치 삽입 (중복 시 무시)
-      await this.rolePermissionRepo
-        .createQueryBuilder()
-        .insert()
-        .into(RolePermissionEntity)
-        .values(entities)
-        .orIgnore() // MySQL: ON DUPLICATE KEY UPDATE (무시)
-        .execute();
-
+      await this.rolePermissionRepo.save(entities);
+      
       this.logger.log('Multiple permissions assigned successfully', {
         roleId: dto.roleId,
-        permissionCount: dto.permissionIds.length,
+        assignedCount: newPermissions.length,
+        skippedCount: duplicates.length,
+        totalRequested: dto.permissionIds.length,
       });
+
+      return {
+        success: true,
+        affected: newPermissions.length,
+        details: {
+          assigned: newPermissions.length,
+          skipped: duplicates.length,
+          duplicates,
+          newAssignments: newPermissions,
+          roleId: dto.roleId,
+          assignedPermissions: newPermissions,
+        },
+      };
     } catch (error: unknown) {
       this.logger.error('Multiple permissions assignment failed', {
         error: error instanceof Error ? error.message : 'Unknown error',
