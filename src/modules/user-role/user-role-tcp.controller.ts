@@ -4,11 +4,11 @@ import { MessagePattern, Payload } from '@nestjs/microservices';
 import { TcpOperationResponse } from '@krgeobuk/core/interfaces';
 import type { TcpUserParams } from '@krgeobuk/user/tcp/interfaces';
 import type { TcpRoleParams } from '@krgeobuk/role/tcp/interfaces';
-import type {
-  TcpUserRoleParams,
-  TcpUserRoleBatch,
-} from '@krgeobuk/authz-relations/user-role/tcp/interfaces';
-import { UserRoleTcpPatterns } from '@krgeobuk/authz-relations/user-role/tcp/patterns';
+import {
+  UserRoleTcpPatterns,
+  type TcpUserRoleParams,
+  type TcpUserRoleBatch,
+} from '@krgeobuk/user-role/tcp';
 
 import { UserRoleService } from './user-role.service.js';
 
@@ -68,25 +68,6 @@ export class UserRoleTcpController {
     }
   }
 
-  @MessagePattern(UserRoleTcpPatterns.ASSIGN_ROLE)
-  async assignRole(@Payload() data: TcpUserRoleParams): Promise<TcpOperationResponse> {
-    try {
-      this.logger.log('TCP user-role assign requested', {
-        userId: data.userId,
-        roleId: data.roleId,
-      });
-      await this.userRoleService.assignRole(data.userId, data.roleId);
-      return { success: true };
-    } catch (error: unknown) {
-      this.logger.error('TCP user-role assign failed', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        userId: data.userId,
-        roleId: data.roleId,
-      });
-      throw error;
-    }
-  }
-
   @MessagePattern(UserRoleTcpPatterns.ASSIGN_MULTIPLE_ROLES)
   async assignMultipleRoles(@Payload() data: TcpUserRoleBatch): Promise<TcpOperationResponse> {
     try {
@@ -106,25 +87,6 @@ export class UserRoleTcpController {
     }
   }
 
-  @MessagePattern(UserRoleTcpPatterns.REVOKE_ROLE)
-  async revokeRole(@Payload() data: TcpUserRoleParams): Promise<TcpOperationResponse> {
-    try {
-      this.logger.log('TCP user-role revoke requested', {
-        userId: data.userId,
-        roleId: data.roleId,
-      });
-      await this.userRoleService.revokeRole(data.userId, data.roleId);
-      return { success: true };
-    } catch (error: unknown) {
-      this.logger.error('TCP user-role revoke failed', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        userId: data.userId,
-        roleId: data.roleId,
-      });
-      throw error;
-    }
-  }
-
   @MessagePattern(UserRoleTcpPatterns.REVOKE_MULTIPLE_ROLES)
   async revokeMultipleRoles(@Payload() data: TcpUserRoleBatch): Promise<TcpOperationResponse> {
     try {
@@ -139,40 +101,6 @@ export class UserRoleTcpController {
         error: error instanceof Error ? error.message : 'Unknown error',
         userId: data.userId,
         roleCount: data.roleIds.length,
-      });
-      throw error;
-    }
-  }
-
-  @MessagePattern(UserRoleTcpPatterns.REVOKE_ALL_ROLES_FROM_USER)
-  async revokeAllRolesFromUser(@Payload() data: TcpUserParams): Promise<TcpOperationResponse> {
-    try {
-      this.logger.log('TCP user-role revoke all roles from user requested', {
-        userId: data.userId,
-      });
-      await this.userRoleService.revokeAllRolesFromUser(data.userId);
-      return { success: true };
-    } catch (error: unknown) {
-      this.logger.error('TCP user-role revoke all roles from user failed', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        userId: data.userId,
-      });
-      throw error;
-    }
-  }
-
-  @MessagePattern(UserRoleTcpPatterns.REVOKE_ALL_USERS_FROM_ROLE)
-  async revokeAllUsersFromRole(@Payload() data: TcpRoleParams): Promise<TcpOperationResponse> {
-    try {
-      this.logger.log('TCP user-role revoke all users from role requested', {
-        roleId: data.roleId,
-      });
-      await this.userRoleService.revokeAllUsersFromRole(data.roleId);
-      return { success: true };
-    } catch (error: unknown) {
-      this.logger.error('TCP user-role revoke all users from role failed', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        roleId: data.roleId,
       });
       throw error;
     }
