@@ -85,13 +85,15 @@ export class UserRoleRepository extends BaseRepository<UserRoleEntity> {
   }
 
   /**
-   * 사용자-역할 관계 존재 확인
+   * 사용자-역할 관계 존재 확인 (최적화된 쿼리)
    */
   async existsUserRole(userId: string, roleId: string): Promise<boolean> {
-    const count = await this.createQueryBuilder('ur')
+    const result = await this.createQueryBuilder('ur')
+      .select('1')
       .where('ur.userId = :userId AND ur.roleId = :roleId', { userId, roleId })
-      .getCount();
+      .limit(1)
+      .getRawOne();
 
-    return count > 0;
+    return !!result;
   }
 }
