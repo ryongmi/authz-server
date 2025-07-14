@@ -1,11 +1,10 @@
 import { Injectable } from '@nestjs/common';
+
 import { DataSource } from 'typeorm';
 
 import { BaseRepository } from '@krgeobuk/core/repositories';
-import type { PaginatedResult } from '@krgeobuk/core/interfaces';
 
 import { ServiceVisibleRoleEntity } from './entities/service-visible-role.entity.js';
-import { ServiceVisibleRoleSearchQueryDto } from './dtos/service-visible-role-search-query.dto.js';
 
 @Injectable()
 export class ServiceVisibleRoleRepository extends BaseRepository<ServiceVisibleRoleEntity> {
@@ -13,144 +12,89 @@ export class ServiceVisibleRoleRepository extends BaseRepository<ServiceVisibleR
     super(ServiceVisibleRoleEntity, dataSource);
   }
 
-  //   async updateUserPassword(
-  //     id: string,
-  //     password: string,
-  //     changePassword: string,
-  //   ): Promise<User> {
-  //     const user = await this.findById(id);
-
-  //     if (!user) {
-  //       throw UserException.userNotFound();
-  //     }
-
-  //     const isExisted = await isExistedPassword(password);
-  //     if (!isExisted) {
-  //       throw UserException.userInfoNotExist();
-  //     }
-
-  //     const result = await isHashingPassword(changePassword);
-  //     user.password = result;
-
-  //     return await this.userRepo.save(user);
-  //   }
   /**
-   * 서비스-가시역할 관계를 검색합니다.
-   * @param query 검색 조건 및 페이지 정보
-   * @returns 페이지네이션된 서비스-가시역할 목록
+   * 서비스 ID로 역할 ID 목록 조회 (최적화된 쿼리)
    */
-  async searchServiceVisibleRoles(query: ServiceVisibleRoleSearchQueryDto): Promise<PaginatedResult<ServiceVisibleRoleEntity>> {
-    const { page = 1, limit = 30, sortOrder = 'DESC', sortBy = 'serviceId', serviceId, roleId } = query;
-    
-    const skip = (page - 1) * limit;
-    const queryBuilder = this.createQueryBuilder('serviceVisibleRole');
+  async findRoleIdsByServiceId(serviceId: string): Promise<string[]> {
+    const result = await this.createQueryBuilder('svr')
+      .select('svr.roleId')
+      .where('svr.serviceId = :serviceId', { serviceId })
+      .getRawMany();
 
-    if (serviceId) {
-      queryBuilder.andWhere('serviceVisibleRole.serviceId = :serviceId', { serviceId });
-    }
-    if (roleId) {
-      queryBuilder.andWhere('serviceVisibleRole.roleId = :roleId', { roleId });
-    }
-
-    queryBuilder
-      .orderBy(`serviceVisibleRole.${sortBy}`, sortOrder)
-      .skip(skip)
-      .take(limit);
-
-    const [items, total] = await queryBuilder.getManyAndCount();
-
-    return {
-      items,
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
-    };
+    return result.map((row) => row.svr_roleId);
   }
 
-  // 기존 주석 코드
-  // async findAllWithFilters(query: ListQuery): Promise<PaginatedResult<Partial<Service>>> {
-  //   const {
-  //     email,
-  //     name,
-  //     nickname,
-  //     provider,
-  //     page = 1,
-  //     limit = 30,
-  //     sortOrder = 'DESC',
-  //     sortBy = 'createdAt',
-  //   } = query;
-  //   const skip = (page - 1) * limit;
+  /**
+   * 역할 ID로 서비스 ID 목록 조회 (최적화된 쿼리)
+   */
+  async findServiceIdsByRoleId(roleId: string): Promise<string[]> {
+    const result = await this.createQueryBuilder('svr')
+      .select('svr.serviceId')
+      .where('svr.roleId = :roleId', { roleId })
+      .getRawMany();
 
-  //   const userAlias = 'user';
-  //   const oauthAccountAlias = 'oauthAccount';
+    return result.map((row) => row.svr_serviceId);
+  }
 
-  //   const qb = this.createQueryBuilder(userAlias)
-  //     .leftJoin(OAuthAccount, oauthAccountAlias, `${oauthAccountAlias}.userId = ${userAlias}.id`)
-  //     .addSelect(`${oauthAccountAlias}.provider`, 'provider'); // 필요한 경우만 선택
-  //   // const qb = this.createQueryBuilder(userAlias).leftJoinAndSelect(
-  //   //   `${userAlias}.${oauthAccountAlias}`,
-  //   //   oauthAccountAlias
-  //   // );
+  /**
+   * 여러 서비스의 역할 ID 목록 조회 (배치 처리)
+   */
+  async findRoleIdsByServiceIds(serviceIds: string[]): Promise<Map<string, string[]>> {
+    const result = await this.createQueryBuilder('svr')
+      .select(['svr.serviceId', 'svr.roleId'])
+      .where('svr.serviceId IN (:...serviceIds)', { serviceIds })
+      .getRawMany();
 
-  //   // const qb = this.createQueryBuilder('user')
-  //   //   .leftJoin(OAuthAccount, 'oauthAccount', 'oauthAccount.userId = user.id')
-  //   //   .addSelect(['user.id', 'user.email', 'user.name', 'oauthAccount.provider']);
+    const serviceRoleMap = new Map<string, string[]>();
 
-  //   if (email) {
-  //     qb.andWhere(`${userAlias}.email LIKE :email`, { email: `%${email}%` });
-  //   }
-  //   if (name) {
-  //     qb.andWhere(`${userAlias}.name LIKE :name`, { name: `%${name}%` });
-  //   }
-  //   if (nickname) {
-  //     qb.andWhere(`${userAlias}.nickname LIKE :nickname`, {
-  //       nickname: `%${nickname}%`,
-  //     });
-  //   }
-  //   if (provider) {
-  //     qb.andWhere(`${oauthAccountAlias}.provider = :provider`, { provider });
-  //   }
+    result.forEach((row) => {
+      const serviceId = row.svr_serviceId;
+      const roleId = row.svr_roleId;
 
-  //   // 특정 역할 필터링 (e.g., 'admin', 'user')
-  //   // if (role) {
-  //   //   qb.andWhere(`${userAlias}.role = :role`, { role });
-  //   // }
+      if (!serviceRoleMap.has(serviceId)) {
+        serviceRoleMap.set(serviceId, []);
+      }
+      serviceRoleMap.get(serviceId)!.push(roleId);
+    });
 
-  //   qb.orderBy(`${userAlias}.${sortBy}`, sortOrder).skip(skip).take(limit);
+    return serviceRoleMap;
+  }
 
-  //   // const [items, total] = await qb
-  //   //   .orderBy(`${userAlias}.${sortBy}`, sortOrder)
-  //   //   .skip(skip)
-  //   //   .take(limit)
-  //   //   .getManyAndCount();
+  /**
+   * 여러 역할의 서비스 ID 목록 조회 (배치 처리)
+   */
+  async findServiceIdsByRoleIds(roleIds: string[]): Promise<Map<string, string[]>> {
+    const result = await this.createQueryBuilder('svr')
+      .select(['svr.roleId', 'svr.serviceId'])
+      .where('svr.roleId IN (:...roleIds)', { roleIds })
+      .getRawMany();
 
-  //   const [rows, total] = await Promise.all([qb.getRawMany(), qb.getCount()]);
+    const roleServiceMap = new Map<string, string[]>();
 
-  //   const data = rows.map((row) => ({
-  //     id: row[`${userAlias}_id`],
-  //     email: row[`${userAlias}_email`],
-  //     name: row[`${userAlias}_name`],
-  //     nickname: row[`${userAlias}_nickname`],
-  //     provider: row[`${oauthAccountAlias}_provider`],
-  //   }));
+    result.forEach((row) => {
+      const roleId = row.svr_roleId;
+      const serviceId = row.svr_serviceId;
 
-  //   const totalPages = Math.ceil(total / limit);
+      if (!roleServiceMap.has(roleId)) {
+        roleServiceMap.set(roleId, []);
+      }
+      roleServiceMap.get(roleId)!.push(serviceId);
+    });
 
-  //   return {
-  //     data,
-  //     total,
-  //     page,
-  //     limit,
-  //     totalPages,
-  //   };
-  // }
+    return roleServiceMap;
+  }
 
-  // // 예시: 유저와 프로필을 조인해서 조회
-  // async findUserWithProfile(userId: string): Promise<Service | null> {
-  //   return this.getQueryBuilder('user')
-  //     .leftJoinAndSelect('user.profile', 'profile')
-  //     .where('user.id = :userId', { userId })
-  //     .getOne();
-  // }
+  /**
+   * 서비스-역할 관계 존재 확인 (SELECT 1 + LIMIT 최적화)
+   */
+  async existsServiceVisibleRole(serviceId: string, roleId: string): Promise<boolean> {
+    const result = await this.createQueryBuilder('svr')
+      .select('1')
+      .where('svr.serviceId = :serviceId AND svr.roleId = :roleId', { serviceId, roleId })
+      .limit(1)
+      .getRawOne();
+
+    return !!result;
+  }
 }
+

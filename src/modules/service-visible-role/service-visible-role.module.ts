@@ -3,12 +3,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ServiceVisibleRoleEntity } from './entities/service-visible-role.entity.js';
 import { ServiceVisibleRoleController } from './service-visible-role.controller.js';
+import { ServiceVisibleRoleTcpController } from './service-visible-role-tcp.controller.js';
 import { ServiceVisibleRoleService } from './service-visible-role.service.js';
 import { ServiceVisibleRoleRepository } from './service-visible-role.repository.js';
 
 @Module({
   imports: [TypeOrmModule.forFeature([ServiceVisibleRoleEntity])],
-  controllers: [ServiceVisibleRoleController],
+  controllers: [ServiceVisibleRoleController, ServiceVisibleRoleTcpController],
   providers: [ServiceVisibleRoleService, ServiceVisibleRoleRepository],
   exports: [ServiceVisibleRoleService],
 })
