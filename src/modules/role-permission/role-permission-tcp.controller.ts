@@ -4,11 +4,11 @@ import { MessagePattern, Payload } from '@nestjs/microservices';
 import { TcpOperationResponse } from '@krgeobuk/core/interfaces';
 import type { TcpRoleParams } from '@krgeobuk/role/tcp/interfaces';
 import type { TcpPermissionParams } from '@krgeobuk/permission/tcp/interfaces';
-import type {
-  TcpRolePermissionParams,
-  TcpRolePermissionBatch,
-} from '@krgeobuk/authz-relations/role-permission/tcp/interfaces';
-import { RolePermissionTcpPatterns } from '@krgeobuk/authz-relations/role-permission/tcp/patterns';
+import {
+  RolePermissionTcpPatterns,
+  type TcpRolePermissionParams,
+  type TcpRolePermissionBatch,
+} from '@krgeobuk/role-permission/tcp';
 
 import { RolePermissionService } from './role-permission.service.js';
 
