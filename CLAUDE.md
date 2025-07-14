@@ -1051,19 +1051,42 @@ export class UserRoleService {
   // ==================== 배치 처리 메서드 ====================
 
   /**
-   * 여러 역할 할당 (배치)
+   * 여러 역할 할당 (배치) - 개선된 중복 검출 및 결과 반환
    */
-  async assignMultipleRoles(userId: string, roleIds: string[]): Promise<void> {
+  async assignMultipleRoles(userId: string, roleIds: string[]): Promise<JunctionTableOperationResult> {
     try {
-      const entities = roleIds.map((roleId) => {
+      // 1. 기존 관계 확인
+      const existingRoles = await this.getRoleIds(userId);
+      const duplicates = roleIds.filter(roleId => existingRoles.includes(roleId));
+      const newRoleIds = roleIds.filter(roleId => !existingRoles.includes(roleId));
+
+      if (newRoleIds.length === 0) {
+        this.logger.warn('All roles already assigned', {
+          userId,
+          duplicates: duplicates.length,
+        });
+        
+        return {
+          success: false,
+          affected: 0,
+          details: {
+            assigned: 0,
+            skipped: duplicates.length,
+            duplicates,
+          },
+        };
+      }
+
+      // 2. 새로운 관계 생성
+      const entities = newRoleIds.map((roleId) => {
         const entity = new UserRoleEntity();
         entity.userId = userId;
         entity.roleId = roleId;
         return entity;
       });
 
-      // 배치 삽입 (중복 시 무시)
-      await this.userRoleRepo
+      // 3. 배치 삽입
+      const result = await this.userRoleRepo
         .createQueryBuilder()
         .insert()
         .into(UserRoleEntity)
@@ -1071,10 +1094,23 @@ export class UserRoleService {
         .orIgnore() // MySQL: ON DUPLICATE KEY UPDATE (무시)
         .execute();
 
+      const assigned = result.raw.affectedRows || newRoleIds.length;
+
       this.logger.log('Multiple user roles assigned successfully', {
         userId,
-        roleCount: roleIds.length,
+        assigned,
+        skipped: duplicates.length,
       });
+
+      return {
+        success: true,
+        affected: assigned,
+        details: {
+          assigned,
+          skipped: duplicates.length,
+          duplicates: duplicates.length > 0 ? duplicates : undefined,
+        },
+      };
     } catch (error: unknown) {
       this.logger.error('Multiple user roles assignment failed', {
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -1220,13 +1256,15 @@ export class UserRoleController {
 }
 ```
 
-#### 2. TCP Controller 패턴
+#### 2. TCP Controller 패턴 및 메서드 순서 표준
 ```typescript
 @Controller()
 export class UserRoleTcpController {
   private readonly logger = new Logger(UserRoleTcpController.name);
 
   constructor(private readonly userRoleService: UserRoleService) {}
+
+  // ==================== 조회 메서드 (양방향) ====================
 
   @MessagePattern(UserRoleTcpPatterns.FIND_ROLES_BY_USER)
   async findRoleIdsByUserId(@Payload() data: TcpUserParams): Promise<string[]> {
@@ -1239,6 +1277,82 @@ export class UserRoleTcpController {
       this.logger.error('TCP user-role find roles by user failed', {
         error: error instanceof Error ? error.message : 'Unknown error',
         userId: data.userId,
+      });
+      throw error;
+    }
+  }
+
+  @MessagePattern(UserRoleTcpPatterns.FIND_USERS_BY_ROLE)
+  async findUserIdsByRoleId(@Payload() data: TcpRoleParams): Promise<string[]> {
+    try {
+      this.logger.debug('TCP user-role find users by role requested', {
+        roleId: data.roleId,
+      });
+      return await this.userRoleService.getUserIds(data.roleId);
+    } catch (error: unknown) {
+      this.logger.error('TCP user-role find users by role failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        roleId: data.roleId,
+      });
+      throw error;
+    }
+  }
+
+  // ==================== 존재 확인 ====================
+
+  @MessagePattern(UserRoleTcpPatterns.EXISTS)
+  async existsUserRole(@Payload() data: TcpUserRoleParams): Promise<boolean> {
+    try {
+      this.logger.debug('TCP user-role exists check requested', {
+        userId: data.userId,
+        roleId: data.roleId,
+      });
+      return await this.userRoleService.exists(data.userId, data.roleId);
+    } catch (error: unknown) {
+      this.logger.error('TCP user-role exists check failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId: data.userId,
+        roleId: data.roleId,
+      });
+      throw error;
+    }
+  }
+
+  // ==================== 배치 처리 (할당 → 해제 → 교체) ====================
+
+  @MessagePattern(UserRoleTcpPatterns.ASSIGN_MULTIPLE_ROLES)
+  async assignMultipleRoles(@Payload() data: TcpUserRoleBatch): Promise<TcpOperationResponse> {
+    try {
+      this.logger.log('TCP user-role assign multiple requested', {
+        userId: data.userId,
+        roleCount: data.roleIds.length,
+      });
+      await this.userRoleService.assignMultipleRoles(data.userId, data.roleIds);
+      return { success: true };
+    } catch (error: unknown) {
+      this.logger.error('TCP user-role assign multiple failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId: data.userId,
+        roleCount: data.roleIds.length,
+      });
+      throw error;
+    }
+  }
+
+  @MessagePattern(UserRoleTcpPatterns.REVOKE_MULTIPLE_ROLES)
+  async revokeMultipleRoles(@Payload() data: TcpUserRoleBatch): Promise<TcpOperationResponse> {
+    try {
+      this.logger.log('TCP user-role revoke multiple requested', {
+        userId: data.userId,
+        roleCount: data.roleIds.length,
+      });
+      await this.userRoleService.revokeMultipleRoles(data.userId, data.roleIds);
+      return { success: true };
+    } catch (error: unknown) {
+      this.logger.error('TCP user-role revoke multiple failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId: data.userId,
+        roleCount: data.roleIds.length,
       });
       throw error;
     }
@@ -1265,6 +1379,32 @@ export class UserRoleTcpController {
 }
 ```
 
+#### TCP 컨트롤러 메서드 순서 표준
+**중간테이블 TCP 컨트롤러의 메서드는 다음 순서를 준수:**
+
+1. **조회 메서드** (양방향 관계 조회)
+   - `FIND_{B}S_BY_{A}` - A의 B 목록 조회
+   - `FIND_{A}S_BY_{B}` - B의 A 목록 조회
+
+2. **존재 확인**
+   - `EXISTS` - 관계 존재 여부 확인
+
+3. **배치 처리** (할당 → 해제 → 교체 순서)
+   - `ASSIGN_MULTIPLE_{B}S` - 배치 할당
+   - `REVOKE_MULTIPLE_{B}S` - 배치 해제
+   - `REPLACE_{B}S` - 완전 교체
+
+#### TCP 메서드 노출 기준
+**포함해야 할 메서드:**
+- ✅ **양방향 조회**: 마이크로서비스 간 빈번한 데이터 조회 필요
+- ✅ **존재 확인**: 권한 검증 등에서 고빈도 호출
+- ✅ **배치 처리**: 성능상 TCP가 HTTP보다 효율적
+
+**제외해야 할 메서드:**
+- ❌ **단일 할당/해제**: HTTP API로 충분, TCP 오버헤드 불필요
+- ❌ **전체 삭제**: 위험한 작업은 HTTP를 통해 명시적으로만 수행
+- ❌ **통계/요약**: 실시간성보다 정확성이 중요한 작업
+
 ### 중간테이블 구현 체크리스트
 
 #### Entity 설계
@@ -1276,7 +1416,7 @@ export class UserRoleTcpController {
 #### Repository 최적화
 - [ ] ID 전용 조회 메서드 (`getRawMany()` 사용)
 - [ ] 배치 처리 메서드 (Map 반환)
-- [ ] Count 기반 존재 확인
+- [ ] `SELECT 1 + LIMIT` 패턴으로 존재 확인 (COUNT 대신)
 - [ ] 효율적 쿼리 패턴
 
 #### Service 구조
@@ -1285,11 +1425,32 @@ export class UserRoleTcpController {
 - [ ] Replace 기능 (트랜잭션 기반)
 - [ ] Repository 최적화 메서드 직접 사용
 
+#### 에러 처리 표준화
+- [ ] 에러 코드 범주별 분류 (000-099: 서버, 100-199: 조회, 200-299: 할당, 300-399: 배치)
+- [ ] 명확한 에러 메시지와 상태 코드 매핑
+- [ ] 사용하지 않는 deprecated 메서드 정리
+- [ ] 일관된 예외 네이밍 패턴
+
+#### 배치 처리 고도화
+- [ ] 기존 관계 확인 후 중복 제거
+- [ ] `JunctionTableOperationResult` 인터페이스 반환
+- [ ] 상세한 작업 결과 제공 (assigned, skipped, duplicates)
+- [ ] 적절한 성공/실패 로깅
+
 #### Controller 완전성
 - [ ] RESTful API 패턴 (조회/변경/배치)
 - [ ] TCP 메시지 패턴 지원
 - [ ] Replace 엔드포인트 구현
 - [ ] 적절한 Swagger 문서화
+
+#### TCP 컨트롤러 표준화
+- [ ] 표준 메서드 순서 준수 (조회 → 존재확인 → 배치처리)
+- [ ] 양방향 조회 메서드 구현 (FIND_{B}S_BY_{A}, FIND_{A}S_BY_{B})
+- [ ] 존재 확인 메서드 구현 (EXISTS)
+- [ ] 배치 처리 3종 세트 (ASSIGN_MULTIPLE, REVOKE_MULTIPLE, REPLACE)
+- [ ] 부적합한 메서드 제외 (단일 할당/해제, 전체 삭제, 통계)
+- [ ] 적절한 로그 레벨 적용 (조회: DEBUG, 변경: LOG)
+- [ ] 구조화된 에러 처리 및 로깅
 
 #### 성능 최적화
 - [ ] 전체 엔티티 대신 ID만 조회
@@ -1297,11 +1458,38 @@ export class UserRoleTcpController {
 - [ ] 트랜잭션 기반 안전한 Replace
 - [ ] 인덱스 활용 쿼리 최적화
 
+### 중간테이블 개선 전략
+
+#### 기존 모듈 개선 시 권장 순서
+1. **통계 API 제거**: 사용하지 않는 통계/요약 API 삭제
+2. **에러 코드 체계 개선**: 범주별 에러 코드 재구조화 및 명확한 네이밍
+3. **Repository 성능 최적화**: `SELECT 1 + LIMIT` 패턴 적용
+4. **배치 처리 로직 고도화**: 중복 검출 및 상세 결과 반환
+5. **Import 경로 정리**: 올바른 패키지 참조 및 타입 import
+6. **Deprecated 메서드 정리**: 사용하지 않는 호환성 메서드 삭제
+
+#### 공통 패키지 업데이트 필수사항
+- **`@krgeobuk/core`**: `JunctionTableOperationResult` 인터페이스 추가
+- **도메인 패키지**: 에러 코드/메시지/예외 클래스 표준화
+- **Import 일관성**: 모든 junction table에서 동일한 인터페이스 사용
+
+#### 개선 검증 체크리스트
+- [ ] 배치 처리가 중복을 사전에 검출하는가?
+- [ ] 작업 결과가 상세한 정보를 포함하는가? (assigned, skipped, duplicates)
+- [ ] 에러 코드가 범주별로 명확히 분류되었는가?
+- [ ] Repository 성능 최적화가 적용되었는가?
+- [ ] 사용하지 않는 deprecated 메서드가 정리되었는가?
+- [ ] 로깅이 구조화되고 적절한 레벨을 사용하는가?
+
 ### 참고 구현체
 
 **완전한 중간테이블 구현 예시:**
-- `user-role` 모듈: 사용자-역할 관계 관리
-- `role-permission` 모듈: 역할-권한 관계 관리
+- `user-role` 모듈: 사용자-역할 관계 관리 (최신 개선 패턴 적용)
+- `role-permission` 모듈: 역할-권한 관계 관리 (최신 개선 패턴 적용)
+
+**개선 전후 비교:**
+- **기존**: 단순 배치 삽입, 기본적인 에러 처리, COUNT 기반 존재 확인
+- **개선 후**: 중복 사전 검출, 상세 결과 반환, SELECT 1 + LIMIT 최적화, 범주별 에러 처리
 
 이 표준을 따르면 고성능, 일관성 있는 중간테이블 도메인을 구현할 수 있으며, 마이크로서비스 간 TCP 통신에서도 효율적인 관계 데이터 조회가 가능합니다.
 
