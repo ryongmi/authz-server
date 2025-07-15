@@ -47,6 +47,528 @@ npm run docker:prod:up     # 프로덕션 Docker 환경
 
 # 🔥 krgeobuk NestJS 서버 공통 개발 표준
 
+## 서비스 아키텍처 패턴
+
+### 1. 단일 도메인 서비스 (Single Domain Service)
+
+단일 도메인 서비스는 하나의 엔티티를 중심으로 하는 서비스로, 해당 도메인의 비즈니스 로직과 데이터 접근을 담당합니다.
+
+**적용 예시**: `PermissionService`, `RoleService`, `UserService`
+
+#### 1.1 기본 구조
+
+```typescript
+@Injectable()
+export class PermissionService {
+  private readonly logger = new Logger(PermissionService.name);
+
+  constructor(
+    private readonly permissionRepo: PermissionRepository,
+    private readonly rolePermissionService: RolePermissionService, // 의존 서비스
+    @Inject('PORTAL_SERVICE') private readonly portalClient: ClientProxy // 외부 서비스
+  ) {}
+
+  // ==================== PUBLIC METHODS ====================
+  
+  // 기본 조회 메서드들
+  async findById(id: string): Promise<Entity | null> { }
+  async findByIdOrFail(id: string): Promise<Entity> { }
+  async findByServiceIds(serviceIds: string[]): Promise<Entity[]> { }
+  async findByAnd(filter: Filter): Promise<Entity[]> { }
+  async findByOr(filter: Filter): Promise<Entity[]> { }
+  
+  // 복합 조회 메서드들
+  async searchPermissions(query: SearchQueryDto): Promise<PaginatedResult<SearchResult>> { }
+  async getPermissionById(id: string): Promise<DetailResult> { }
+  
+  // ==================== 변경 메서드 ====================
+  
+  async createPermission(dto: CreateDto, transactionManager?: EntityManager): Promise<void> { }
+  async updatePermission(id: string, dto: UpdateDto, transactionManager?: EntityManager): Promise<void> { }
+  async deletePermission(id: string): Promise<UpdateResult> { }
+  
+  // ==================== PRIVATE HELPER METHODS ====================
+  
+  private async getServiceById(serviceId: string): Promise<Service> { }
+  private buildSearchResults(items: Entity[], metadata: any): SearchResult[] { }
+}
+```
+
+#### 1.2 메서드 순서 표준
+
+1. **PUBLIC METHODS**
+   - 기본 조회 메서드 (`findById`, `findByIdOrFail`, `findByServiceIds`, `findByAnd`, `findByOr`)
+   - 복합 조회 메서드 (`searchXXX`, `getXXXById`)
+   - 변경 메서드 (`createXXX`, `updateXXX`, `deleteXXX`)
+
+2. **PRIVATE HELPER METHODS**
+   - 외부 서비스 통신 메서드
+   - 데이터 변환 및 빌더 메서드
+
+#### 1.3 에러 처리 표준
+
+```typescript
+async createPermission(dto: CreatePermissionDto, transactionManager?: EntityManager): Promise<void> {
+  try {
+    // 비즈니스 로직 검증
+    if (dto.action && dto.serviceId) {
+      const existingPermission = await this.permissionRepo.findOne({
+        where: { action: dto.action, serviceId: dto.serviceId },
+      });
+
+      if (existingPermission) {
+        this.logger.warn('권한 생성 실패: 서비스 내 중복 액션', {
+          action: dto.action,
+          serviceId: dto.serviceId,
+        });
+        throw PermissionException.permissionAlreadyExists();
+      }
+    }
+
+    // 엔티티 생성 및 저장
+    const entity = new PermissionEntity();
+    Object.assign(entity, dto);
+    await this.permissionRepo.saveEntity(entity, transactionManager);
+
+    this.logger.log('권한 생성 성공', {
+      permissionId: entity.id,
+      action: dto.action,
+      serviceId: dto.serviceId,
+    });
+  } catch (error: unknown) {
+    if (error instanceof HttpException) {
+      throw error; // 이미 처리된 예외는 그대로 전파
+    }
+
+    this.logger.error('권한 생성 실패', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      action: dto.action,
+      serviceId: dto.serviceId,
+    });
+
+    throw PermissionException.permissionCreateError(); // 도메인명 포함
+  }
+}
+```
+
+**에러 처리 원칙**:
+- 도메인별 Exception 클래스 사용 (`PermissionException.permissionCreateError()`)
+- HttpException 인스턴스는 그대로 전파
+- 상세한 컨텍스트 정보와 함께 로깅
+- 도메인명을 포함한 에러 메서드 명명 (`permissionCreateError`, `roleUpdateError`)
+
+#### 1.4 로깅 표준
+
+```typescript
+// 성공 로그 - 엔티티 ID와 핵심 정보 포함
+this.logger.log('권한 생성 성공', {
+  permissionId: entity.id,
+  action: dto.action,
+  serviceId: dto.serviceId,
+});
+
+// 경고 로그 - 실패 원인과 관련 데이터 포함
+this.logger.warn('권한 생성 실패: 서비스 내 중복 액션', {
+  action: dto.action,
+  serviceId: dto.serviceId,
+});
+
+// 에러 로그 - 에러 메시지와 입력 파라미터 포함
+this.logger.error('권한 생성 실패', {
+  error: error instanceof Error ? error.message : 'Unknown error',
+  action: dto.action,
+  serviceId: dto.serviceId,
+});
+
+// 외부 서비스 통신 실패 로그
+this.logger.warn('포털 서비스에서 서비스 정보 조회 실패, 대체 데이터 사용', {
+  error: error instanceof Error ? error.message : 'Unknown error',
+  serviceId,
+});
+```
+
+#### 1.5 관계 검증 패턴
+
+```typescript
+async deletePermission(permissionId: string): Promise<UpdateResult> {
+  try {
+    // 1. 엔티티 존재 확인
+    const permission = await this.findByIdOrFail(permissionId);
+
+    // 2. 관계 검증 (중간 테이블 서비스 활용)
+    const roleIds = await this.rolePermissionService.getRoleIds(permissionId);
+    if (roleIds.length > 0) {
+      this.logger.warn('권한 삭제 실패: 권한에 할당된 역할이 있음', {
+        permissionId,
+        action: permission.action,
+        assignedRoles: roleIds.length,
+      });
+      throw PermissionException.permissionDeleteError();
+    }
+
+    // 3. 삭제 수행
+    const result = await this.permissionRepo.softDelete(permissionId);
+
+    this.logger.log('권한 삭제 성공', {
+      permissionId,
+      action: permission.action,
+      serviceId: permission.serviceId,
+    });
+
+    return result;
+  } catch (error: unknown) {
+    // 에러 처리...
+  }
+}
+```
+
+#### 1.6 트랜잭션 지원 패턴
+
+```typescript
+async createPermission(
+  dto: CreatePermissionDto,
+  transactionManager?: EntityManager // 선택적 트랜잭션 매니저
+): Promise<void> {
+  // transactionManager가 있으면 트랜잭션 내에서 실행
+  // 없으면 개별 트랜잭션으로 실행
+  await this.permissionRepo.saveEntity(entity, transactionManager);
+}
+
+async updatePermission(
+  permissionId: string,
+  dto: UpdatePermissionDto,
+  transactionManager?: EntityManager
+): Promise<void> {
+  await this.permissionRepo.updateEntity(permission, transactionManager);
+}
+```
+
+### 2. 중간 테이블 서비스 (Junction Table Service)
+
+중간 테이블 서비스는 두 도메인 간의 관계를 관리하는 서비스입니다.
+
+**표준 컨벤션**: `UserRoleService` 기준 (최고 성능 및 완성도)
+**참고 서비스**: `RolePermissionService`, `ServiceVisibleRoleService`
+
+#### 2.1 기본 구조 (UserRoleService 표준)
+
+```typescript
+@Injectable()
+export class UserRoleService {
+  private readonly logger = new Logger(UserRoleService.name);
+
+  constructor(private readonly userRoleRepo: UserRoleRepository) {}
+
+  // ==================== 조회 메서드 (ID 목록 반환) ====================
+  
+  /**
+   * 사용자의 역할 ID 목록 조회
+   */
+  async getRoleIds(userId: string): Promise<string[]> {
+    try {
+      return await this.userRoleRepo.findRoleIdsByUserId(userId);
+    } catch (error: unknown) {
+      this.logger.error('사용자별 역할 ID 조회 실패', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId,
+      });
+      throw UserRoleException.fetchError();
+    }
+  }
+
+  /**
+   * 역할의 사용자 ID 목록 조회
+   */
+  async getUserIds(roleId: string): Promise<string[]> {
+    try {
+      return await this.userRoleRepo.findUserIdsByRoleId(roleId);
+    } catch (error: unknown) {
+      this.logger.error('역할별 사용자 ID 조회 실패', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        roleId,
+      });
+      throw UserRoleException.fetchError();
+    }
+  }
+
+  /**
+   * 사용자-역할 관계 존재 확인
+   */
+  async exists(userId: string, roleId: string): Promise<boolean> {
+    try {
+      return await this.userRoleRepo.existsUserRole(userId, roleId);
+    } catch (error: unknown) {
+      this.logger.error('사용자-역할 관계 존재 확인 실패', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId,
+        roleId,
+      });
+      throw UserRoleException.fetchError();
+    }
+  }
+
+  // 배치 조회 메서드
+  async getRoleIdsBatch(userIds: string[]): Promise<Map<string, string[]>> {
+    try {
+      return await this.userRoleRepo.findRoleIdsByUserIds(userIds);
+    } catch (error: unknown) {
+      this.logger.error('사용자별 역할 ID 배치 조회 실패', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userCount: userIds.length,
+      });
+      throw UserRoleException.fetchError();
+    }
+  }
+
+  async getUserIdsBatch(roleIds: string[]): Promise<Map<string, string[]>> {
+    try {
+      return await this.userRoleRepo.findUserIdsByRoleIds(roleIds);
+    } catch (error: unknown) {
+      this.logger.error('역할별 사용자 ID 배치 조회 실패', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        roleCount: roleIds.length,
+      });
+      throw UserRoleException.fetchError();
+    }
+  }
+
+  // ==================== 변경 메서드 ====================
+  
+  // 단일 관계 관리
+  async assignUserRole(dto: {userId: string; roleId: string}): Promise<void> { }
+  async revokeUserRole(userId: string, roleId: string): Promise<void> { }
+  
+  // 배치 관계 관리
+  async assignMultipleRoles(dto: {userId: string; roleIds: string[]}): Promise<UserRoleBatchAssignmentResult> { }
+  async revokeMultipleRoles(dto: {userId: string; roleIds: string[]}): Promise<void> { }
+  async replaceUserRoles(dto: {userId: string; roleIds: string[]}): Promise<void> { }
+  
+  // 최적화 메서드 (필수)
+  async hasUsersForRole(roleId: string): Promise<boolean> { }
+}
+```
+
+#### 2.2 배치 처리 결과 반환 표준
+
+```typescript
+interface UserRoleBatchAssignmentResult {
+  success: boolean;
+  affected: number;
+  details: {
+    assigned: number;
+    skipped: number;
+    duplicates: string[];
+    newAssignments: string[];
+    userId: string;
+    assignedRoles: string[];
+  };
+}
+
+async assignMultipleRoles(dto: {
+  userId: string;
+  roleIds: string[];
+}): Promise<UserRoleBatchAssignmentResult> {
+  try {
+    // 1. 기존 관계 확인
+    const existingRoles = await this.getRoleIds(dto.userId);
+    const newRoles = dto.roleIds.filter(id => !existingRoles.includes(id));
+    const duplicates = dto.roleIds.filter(id => existingRoles.includes(id));
+
+    if (newRoles.length === 0) {
+      this.logger.warn('새로운 역할 할당 없음 - 모든 역할이 이미 존재', {
+        userId: dto.userId,
+        requestedCount: dto.roleIds.length,
+        duplicateCount: duplicates.length,
+      });
+
+      return {
+        success: true,
+        affected: 0,
+        details: {
+          assigned: 0,
+          skipped: duplicates.length,
+          duplicates,
+          newAssignments: [],
+          userId: dto.userId,
+          assignedRoles: [],
+        },
+      };
+    }
+
+    // 2. 새로운 역할만 할당
+    const entities = newRoles.map(roleId => {
+      const entity = new UserRoleEntity();
+      entity.userId = dto.userId;
+      entity.roleId = roleId;
+      return entity;
+    });
+
+    await this.userRoleRepo.save(entities);
+
+    this.logger.log('사용자 다중 역할 할당 성공', {
+      userId: dto.userId,
+      assignedCount: newRoles.length,
+      skippedCount: duplicates.length,
+      totalRequested: dto.roleIds.length,
+    });
+
+    return {
+      success: true,
+      affected: newRoles.length,
+      details: {
+        assigned: newRoles.length,
+        skipped: duplicates.length,
+        duplicates,
+        newAssignments: newRoles,
+        userId: dto.userId,
+        assignedRoles: newRoles,
+      },
+    };
+  } catch (error: unknown) {
+    this.logger.error('사용자 다중 역할 할당 실패', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      userId: dto.userId,
+      roleCount: dto.roleIds.length,
+    });
+
+    throw UserRoleException.assignMultipleError();
+  }
+}
+```
+
+#### 2.3 성능 최적화 패턴 (필수 구현)
+
+```typescript
+// 🔥 최우선 최적화: 존재 확인 최적화 (전체 데이터 로드 대신 개수만 확인)
+async hasUsersForRole(roleId: string): Promise<boolean> {
+  try {
+    const userIds = await this.userRoleRepo.findUserIdsByRoleId(roleId);
+    return userIds.length > 0;
+  } catch (error: unknown) {
+    this.logger.error('역할의 사용자 존재 확인 실패', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      roleId,
+    });
+    throw UserRoleException.fetchError();
+  }
+}
+
+// 🔥 선택적 최적화: 카운트 전용 메서드 (메모리 효율성)
+async getUserCountsBatch(roleIds: string[]): Promise<Map<string, number>> {
+  try {
+    const userIdsMap = await this.userRoleRepo.findUserIdsByRoleIds(roleIds);
+    const userCounts = new Map<string, number>();
+
+    roleIds.forEach(roleId => {
+      const userIds = userIdsMap.get(roleId) || [];
+      userCounts.set(roleId, userIds.length);
+    });
+
+    return userCounts;
+  } catch (error: unknown) {
+    this.logger.error('역할별 사용자 수 조회 실패', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      roleCount: roleIds.length,
+    });
+    throw UserRoleException.fetchError();
+  }
+}
+```
+
+#### 2.4 트랜잭션 지원 패턴
+
+```typescript
+/**
+ * 사용자 역할 완전 교체 (배치) - 트랜잭션 활용
+ */
+async replaceUserRoles(dto: { userId: string; roleIds: string[] }): Promise<void> {
+  try {
+    await this.userRoleRepo.manager.transaction(async (manager) => {
+      // 1. 기존 역할 모두 삭제
+      await manager.delete(UserRoleEntity, { userId: dto.userId });
+
+      // 2. 새로운 역할 배치 삽입
+      if (dto.roleIds.length > 0) {
+        const entities = dto.roleIds.map(roleId => {
+          const entity = new UserRoleEntity();
+          entity.userId = dto.userId;
+          entity.roleId = roleId;
+          return entity;
+        });
+
+        await manager.save(UserRoleEntity, entities);
+      }
+    });
+
+    this.logger.log('사용자 역할 교체 성공', {
+      userId: dto.userId,
+      newRoleCount: dto.roleIds.length,
+    });
+  } catch (error: unknown) {
+    this.logger.error('사용자 역할 교체 실패', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      userId: dto.userId,
+      newRoleCount: dto.roleIds.length,
+    });
+
+    throw UserRoleException.replaceError();
+  }
+}
+```
+
+#### 2.5 에러 처리 표준
+
+```typescript
+// 단일 할당 에러 처리
+async assignUserRole(dto: { userId: string; roleId: string }): Promise<void> {
+  const { userId, roleId } = dto;
+  try {
+    // 중복 확인
+    const exists = await this.exists(userId, roleId);
+    if (exists) {
+      this.logger.warn('사용자-역할 관계 이미 존재', {
+        userId,
+        roleId,
+      });
+      throw UserRoleException.userRoleAlreadyExists();
+    }
+
+    const entity = new UserRoleEntity();
+    Object.assign(entity, { userId, roleId });
+
+    await this.userRoleRepo.save(entity);
+
+    this.logger.log('사용자-역할 할당 성공', {
+      userId,
+      roleId,
+    });
+  } catch (error: unknown) {
+    if (error instanceof HttpException) {
+      throw error; // 이미 처리된 예외는 그대로 전파
+    }
+
+    this.logger.error('사용자-역할 할당 실패', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      userId,
+      roleId,
+    });
+
+    throw UserRoleException.assignError();
+  }
+}
+```
+
+#### 2.6 성능 우선순위 가이드
+
+1. **필수 구현**: `hasUsersForRole()` - 삭제 전 존재 확인 최적화
+2. **권장 구현**: `getUserCountsBatch()` - 메모리 효율적 카운트 조회
+3. **선택적 구현**: 트랜잭션 기반 배치 처리
+4. **최적화 목표**: N+1 쿼리 방지, 메모리 사용량 최소화
+
+---
+
+# 🔥 krgeobuk NestJS 서버 공통 개발 표준
+
 > **중요**: 이 섹션은 krgeobuk 생태계의 **모든 NestJS 서버**(auth-server, authz-server, portal-server)에서 공통으로 적용되는 표준입니다.
 
 ## API 응답 포맷 표준
@@ -394,48 +916,204 @@ async function getUserById(id) {  // 타입 누락
 
 ### 서비스 클래스 구조 표준
 
-#### 메서드 순서 및 그룹화 규칙
+#### 도메인 타입별 서비스 구조
+
+**단일 도메인 서비스 (permission, role 등)**와 **중간테이블 서비스 (role-permission 등)**는 다른 구조를 가집니다.
+
+##### 1. 단일 도메인 서비스 구조
 ```typescript
 @Injectable()
-export class ExampleService {
-  private readonly logger = new Logger(ExampleService.name);
+export class PermissionService {
+  private readonly logger = new Logger(PermissionService.name);
 
   constructor(
-    private readonly repo: ExampleRepository,
-    // 의존성 주입
+    private readonly permissionRepo: PermissionRepository,
+    private readonly rolePermissionService: RolePermissionService,
+    @Inject('PORTAL_SERVICE') private readonly portalClient: ClientProxy
   ) {}
 
-  // ==================== PUBLIC METHODS ====================
+  // ==================== 조회 메서드 (기본 CRUD) ====================
 
-  // 1. 조회 메서드들 (가장 기본적인 CRUD 순서)
-  async findById(id: string): Promise<Entity | null> { }
-  async findByIdOrFail(id: string): Promise<Entity> { }
-  async findByServiceIds(serviceIds: string[]): Promise<Entity[]> { }
-  async findByAnd(filter: Filter): Promise<Entity[]> { }
-  async findByOr(filter: Filter): Promise<Entity[]> { }
+  async findById(id: string): Promise<Entity | null> {
+    return this.permissionRepo.findOneById(id);
+  }
 
-  // 2. 검색 및 상세 조회 메서드들  
-  async searchEntities(query: SearchQuery): Promise<PaginatedResult> { }
-  async getEntityDetail(id: string): Promise<Detail> { }
+  async findByIdOrFail(id: string): Promise<Entity> {
+    const entity = await this.permissionRepo.findOneById(id);
+    if (!entity) {
+      throw PermissionException.permissionNotFound();
+    }
+    return entity;
+  }
 
-  // 3. 변경 메서드들 (생성 → 수정 → 삭제 순서)
-  async createEntity(attrs: CreateAttrs): Promise<void> { }
-  async updateEntity(id: string, attrs: UpdateAttrs): Promise<void> { }
-  async deleteEntity(id: string): Promise<UpdateResult> { }
+  async findByServiceIds(serviceIds: string[]): Promise<Entity[]> {
+    return this.permissionRepo.find({ where: { serviceId: In(serviceIds) } });
+  }
+
+  async findByAnd(filter: Filter): Promise<Entity[]> {
+    // AND 조건 검색 로직
+  }
+
+  async findByOr(filter: Filter): Promise<Entity[]> {
+    // OR 조건 검색 로직
+  }
+
+  // ==================== 검색 및 상세 조회 메서드 ====================
+
+  async searchPermissions(query: SearchQuery): Promise<PaginatedResult> {
+    // 페이지네이션 검색 로직
+  }
+
+  async getPermissionById(id: string): Promise<Detail> {
+    // 상세 정보 조회 (외부 데이터 포함)
+  }
+
+  // ==================== 변경 메서드 ====================
+
+  async createPermission(dto: CreateDto, transactionManager?: EntityManager): Promise<void> {
+    try {
+      // 비즈니스 규칙 검증
+      if (dto.action && dto.serviceId) {
+        const existing = await this.permissionRepo.findOne({
+          where: { action: dto.action, serviceId: dto.serviceId }
+        });
+        if (existing) {
+          throw PermissionException.permissionAlreadyExists();
+        }
+      }
+
+      // 엔티티 생성
+      const entity = new PermissionEntity();
+      Object.assign(entity, dto);
+      await this.permissionRepo.saveEntity(entity, transactionManager);
+
+      this.logger.log('Permission created successfully', {
+        permissionId: entity.id,
+        action: dto.action,
+        serviceId: dto.serviceId,
+      });
+    } catch (error: unknown) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      
+      this.logger.error('Permission creation failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        action: dto.action,
+        serviceId: dto.serviceId,
+      });
+      
+      throw PermissionException.permissionCreateError();
+    }
+  }
+
+  async updatePermission(id: string, dto: UpdateDto, transactionManager?: EntityManager): Promise<void> {
+    // 수정 로직 (비즈니스 규칙 검증 포함)
+  }
+
+  async deletePermission(id: string): Promise<UpdateResult> {
+    try {
+      const entity = await this.findByIdOrFail(id);
+      
+      // 관계 검증 (삭제 전 의존성 확인)
+      const roleIds = await this.rolePermissionService.getRoleIds(id);
+      if (roleIds.length > 0) {
+        this.logger.warn('Permission deletion failed: permission has assigned roles', {
+          permissionId: id,
+          action: entity.action,
+          assignedRoles: roleIds.length,
+        });
+        throw PermissionException.permissionDeleteError();
+      }
+
+      const result = await this.permissionRepo.softDelete(id);
+      
+      this.logger.log('Permission deleted successfully', {
+        permissionId: id,
+        action: entity.action,
+        serviceId: entity.serviceId,
+      });
+      
+      return result;
+    } catch (error: unknown) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      
+      this.logger.error('Permission deletion failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        permissionId: id,
+      });
+      
+      throw PermissionException.permissionDeleteError();
+    }
+  }
 
   // ==================== PRIVATE HELPER METHODS ====================
 
-  // TCP 통신 관련 헬퍼들
-  private async getExternalData(): Promise<ExternalData> { }
-  private async notifyOtherServices(): Promise<void> { }
+  private async getExternalData(): Promise<ExternalData> {
+    // TCP 통신 관련 헬퍼
+  }
 
-  // 데이터 변환 관련 헬퍼들
-  private buildSearchResults(): SearchResult[] { }
-  private buildFallbackResults(): SearchResult[] { }
-  
-  // 유틸리티 헬퍼들
-  private validateBusinessRules(): boolean { }
-  private formatResponseData(): FormattedData { }
+  private buildSearchResults(): SearchResult[] {
+    // 데이터 변환 관련 헬퍼
+  }
+
+  private buildFallbackResults(): SearchResult[] {
+    // 폴백 처리 헬퍼
+  }
+}
+```
+
+##### 2. 중간테이블 서비스 구조
+```typescript
+@Injectable()
+export class RolePermissionService {
+  private readonly logger = new Logger(RolePermissionService.name);
+
+  constructor(private readonly rolePermissionRepo: RolePermissionRepository) {}
+
+  // ==================== 조회 메서드 (ID 목록 반환) ====================
+
+  async getPermissionIds(roleId: string): Promise<string[]> {
+    // 역할의 권한 ID 목록 조회
+  }
+
+  async getRoleIds(permissionId: string): Promise<string[]> {
+    // 권한의 역할 ID 목록 조회
+  }
+
+  async exists(roleId: string, permissionId: string): Promise<boolean> {
+    // 관계 존재 확인
+  }
+
+  async getPermissionIdsBatch(roleIds: string[]): Promise<Map<string, string[]>> {
+    // 배치 처리 조회
+  }
+
+  // ==================== 변경 메서드 ====================
+
+  async assignRolePermission(dto: { roleId: string; permissionId: string }): Promise<void> {
+    // 단일 관계 생성
+  }
+
+  async revokeRolePermission(roleId: string, permissionId: string): Promise<void> {
+    // 단일 관계 삭제
+  }
+
+  // ==================== 배치 처리 메서드 ====================
+
+  async assignMultiplePermissions(dto: { roleId: string; permissionIds: string[] }): Promise<Result> {
+    // 배치 할당
+  }
+
+  async revokeMultiplePermissions(dto: { roleId: string; permissionIds: string[] }): Promise<void> {
+    // 배치 해제
+  }
+
+  async replaceRolePermissions(dto: { roleId: string; permissionIds: string[] }): Promise<void> {
+    // 완전 교체
+  }
 }
 ```
 
