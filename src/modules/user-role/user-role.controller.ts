@@ -162,15 +162,18 @@ export class UserRoleController {
     description: UserRoleError.ASSIGN_ERROR.message,
   })
   @SwaggerApiErrorResponse({
-    status: UserRoleError.ALREADY_ASSIGNED.statusCode,
-    description: UserRoleError.ALREADY_ASSIGNED.message,
+    status: UserRoleError.USER_ROLE_ALREADY_EXISTS.statusCode,
+    description: UserRoleError.USER_ROLE_ALREADY_EXISTS.message,
   })
   @RequireRole('super-admin')
   @Serialize({
     ...UserRoleResponse.ASSIGN_SUCCESS,
   })
   async assignUserRole(@Param() params: UserRoleParamsDto): Promise<void> {
-    await this.userRoleService.assignRole(params.userId, params.roleId);
+    await this.userRoleService.assignUserRole({
+      userId: params.userId,
+      roleId: params.roleId,
+    });
   }
 
   @Delete('users/:userId/roles/:roleId')
@@ -196,8 +199,8 @@ export class UserRoleController {
     description: UserRoleResponse.REVOKE_SUCCESS.message,
   })
   @SwaggerApiErrorResponse({
-    status: UserRoleError.NOT_ASSIGNED.statusCode,
-    description: UserRoleError.NOT_ASSIGNED.message,
+    status: UserRoleError.USER_ROLE_NOT_FOUND.statusCode,
+    description: UserRoleError.USER_ROLE_NOT_FOUND.message,
   })
   @SwaggerApiErrorResponse({
     status: UserRoleError.REVOKE_ERROR.statusCode,
@@ -205,7 +208,7 @@ export class UserRoleController {
   })
   @RequireRole('super-admin')
   async revokeUserRole(@Param() params: UserRoleParamsDto): Promise<void> {
-    await this.userRoleService.revokeRole(params.userId, params.roleId);
+    await this.userRoleService.revokeUserRole(params.userId, params.roleId);
   }
 
   // ==================== 배치 처리 API ====================
@@ -242,7 +245,10 @@ export class UserRoleController {
     @Param() params: UserIdParamsDto,
     @Body() dto: RoleIdsDto
   ): Promise<void> {
-    await this.userRoleService.assignMultipleRoles(params.userId, dto.roleIds);
+    await this.userRoleService.assignMultipleRoles({
+      userId: params.userId,
+      roleIds: dto.roleIds,
+    });
   }
 
   @Delete('users/:userId/roles/batch')
@@ -277,63 +283,10 @@ export class UserRoleController {
     @Param() params: UserIdParamsDto,
     @Body() dto: RoleIdsDto
   ): Promise<void> {
-    await this.userRoleService.revokeMultipleRoles(params.userId, dto.roleIds);
-  }
-
-  @Delete('users/:userId/roles')
-  @HttpCode(UserRoleResponse.REVOKE_ALL_FROM_USER_SUCCESS.statusCode)
-  @SwaggerApiOperation({
-    summary: '사용자의 모든 역할 해제',
-    description: '특정 사용자에게 할당된 모든 역할을 해제합니다.',
-  })
-  @SwaggerApiParam({
-    name: 'userId',
-    type: String,
-    description: '사용자 ID',
-    example: '123e4567-e89b-12d3-a456-426614174000',
-  })
-  @SwaggerApiOkResponse({
-    status: UserRoleResponse.REVOKE_ALL_FROM_USER_SUCCESS.statusCode,
-    description: UserRoleResponse.REVOKE_ALL_FROM_USER_SUCCESS.message,
-  })
-  @SwaggerApiErrorResponse({
-    status: UserRoleError.REVOKE_ALL_FROM_USER_ERROR.statusCode,
-    description: UserRoleError.REVOKE_ALL_FROM_USER_ERROR.message,
-  })
-  @RequireRole('super-admin')
-  @Serialize({
-    ...UserRoleResponse.REVOKE_ALL_FROM_USER_SUCCESS,
-  })
-  async revokeAllRolesFromUser(@Param() params: UserIdParamsDto): Promise<void> {
-    await this.userRoleService.revokeAllRolesFromUser(params.userId);
-  }
-
-  @Delete('roles/:roleId/users')
-  @HttpCode(UserRoleResponse.REVOKE_ALL_FROM_ROLE_SUCCESS.statusCode)
-  @SwaggerApiOperation({
-    summary: '역할의 모든 사용자 해제',
-    description: '특정 역할을 가진 모든 사용자를 해제합니다.',
-  })
-  @SwaggerApiParam({
-    name: 'roleId',
-    type: String,
-    description: '역할 ID',
-    example: '123e4567-e89b-12d3-a456-426614174000',
-  })
-  @SwaggerApiOkResponse({
-    status: UserRoleResponse.REVOKE_ALL_FROM_ROLE_SUCCESS.statusCode,
-    description: UserRoleResponse.REVOKE_ALL_FROM_ROLE_SUCCESS.message,
-  })
-  @SwaggerApiErrorResponse({
-    status: UserRoleError.REVOKE_ALL_FROM_ROLE_ERROR.statusCode,
-    description: UserRoleError.REVOKE_ALL_FROM_ROLE_ERROR.message,
-  })
-  @RequireRole('super-admin')
-  @Serialize({
-    ...UserRoleResponse.REVOKE_ALL_FROM_ROLE_SUCCESS,
-  })
-  async revokeAllUsersFromRole(@Param() params: RoleIdParamsDto): Promise<void> {
-    await this.userRoleService.revokeAllUsersFromRole(params.roleId);
+    await this.userRoleService.revokeMultipleRoles({
+      userId: params.userId,
+      roleIds: dto.roleIds,
+    });
   }
 
   @Put('users/:userId/roles')

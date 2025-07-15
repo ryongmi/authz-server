@@ -2,11 +2,11 @@ import { Controller, Logger } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 
 import { TcpOperationResponse } from '@krgeobuk/core/interfaces';
-import type { TcpUserParams } from '@krgeobuk/user/tcp/interfaces';
-import type { TcpRoleParams } from '@krgeobuk/role/tcp/interfaces';
+import type { TcpUserId } from '@krgeobuk/user/tcp/interfaces';
+import type { TcpRoleId } from '@krgeobuk/role/tcp/interfaces';
 import {
   UserRoleTcpPatterns,
-  type TcpUserRoleParams,
+  type TcpUserRole,
   type TcpUserRoleBatch,
 } from '@krgeobuk/user-role/tcp';
 
@@ -19,7 +19,7 @@ export class UserRoleTcpController {
   constructor(private readonly userRoleService: UserRoleService) {}
 
   @MessagePattern(UserRoleTcpPatterns.FIND_ROLES_BY_USER)
-  async findRoleIdsByUserId(@Payload() data: TcpUserParams): Promise<string[]> {
+  async findRoleIdsByUserId(@Payload() data: TcpUserId): Promise<string[]> {
     try {
       this.logger.debug('TCP user-role find roles by user requested', {
         userId: data.userId,
@@ -35,7 +35,7 @@ export class UserRoleTcpController {
   }
 
   @MessagePattern(UserRoleTcpPatterns.FIND_USERS_BY_ROLE)
-  async findUserIdsByRoleId(@Payload() data: TcpRoleParams): Promise<string[]> {
+  async findUserIdsByRoleId(@Payload() data: TcpRoleId): Promise<string[]> {
     try {
       this.logger.debug('TCP user-role find users by role requested', {
         roleId: data.roleId,
@@ -51,7 +51,7 @@ export class UserRoleTcpController {
   }
 
   @MessagePattern(UserRoleTcpPatterns.EXISTS)
-  async existsUserRole(@Payload() data: TcpUserRoleParams): Promise<boolean> {
+  async existsUserRole(@Payload() data: TcpUserRole): Promise<boolean> {
     try {
       this.logger.debug('TCP user-role exists check requested', {
         userId: data.userId,
@@ -68,14 +68,17 @@ export class UserRoleTcpController {
     }
   }
 
-  @MessagePattern(UserRoleTcpPatterns.ASSIGN_MULTIPLE_ROLES)
+  @MessagePattern(UserRoleTcpPatterns.ASSIGN_MULTIPLE)
   async assignMultipleRoles(@Payload() data: TcpUserRoleBatch): Promise<TcpOperationResponse> {
     try {
       this.logger.log('TCP user-role assign multiple requested', {
         userId: data.userId,
         roleCount: data.roleIds.length,
       });
-      await this.userRoleService.assignMultipleRoles(data.userId, data.roleIds);
+      await this.userRoleService.assignMultipleRoles({
+        userId: data.userId,
+        roleIds: data.roleIds,
+      });
       return { success: true };
     } catch (error: unknown) {
       this.logger.error('TCP user-role assign multiple failed', {
@@ -87,14 +90,17 @@ export class UserRoleTcpController {
     }
   }
 
-  @MessagePattern(UserRoleTcpPatterns.REVOKE_MULTIPLE_ROLES)
+  @MessagePattern(UserRoleTcpPatterns.REVOKE_MULTIPLE)
   async revokeMultipleRoles(@Payload() data: TcpUserRoleBatch): Promise<TcpOperationResponse> {
     try {
       this.logger.log('TCP user-role revoke multiple requested', {
         userId: data.userId,
         roleCount: data.roleIds.length,
       });
-      await this.userRoleService.revokeMultipleRoles(data.userId, data.roleIds);
+      await this.userRoleService.revokeMultipleRoles({
+        userId: data.userId,
+        roleIds: data.roleIds,
+      });
       return { success: true };
     } catch (error: unknown) {
       this.logger.error('TCP user-role revoke multiple failed', {
