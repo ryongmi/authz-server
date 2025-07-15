@@ -20,9 +20,9 @@ import {
   SwaggerApiOkResponse,
   SwaggerApiErrorResponse,
 } from '@krgeobuk/swagger/decorators';
-import { JwtPayload } from '@krgeobuk/jwt/interfaces';
-import { CurrentJwt } from '@krgeobuk/jwt/decorators';
 import { AccessTokenGuard } from '@krgeobuk/jwt/guards';
+import { AuthorizationGuard } from '@krgeobuk/authorization/guards';
+import { RequireRole } from '@krgeobuk/authorization/decorators';
 import { RoleIdParamsDto } from '@krgeobuk/shared/role/dtos';
 import { PermissionIdParamsDto } from '@krgeobuk/shared/permission';
 import { RolePermissionParamsDto } from '@krgeobuk/shared/role-permission';
@@ -35,7 +35,7 @@ import { RolePermissionService } from './role-permission.service.js';
 // 중간테이블 특성에 맞는 RESTful API 설계
 @SwaggerApiTags({ tags: ['role-permissions'] })
 @SwaggerApiBearerAuth()
-@UseGuards(AccessTokenGuard)
+@UseGuards(AccessTokenGuard, AuthorizationGuard)
 @Controller()
 export class RolePermissionController {
   constructor(private readonly rolePermissionService: RolePermissionService) {}
@@ -63,13 +63,11 @@ export class RolePermissionController {
     status: RolePermissionError.FETCH_ERROR.statusCode,
     description: RolePermissionError.FETCH_ERROR.message,
   })
+  @RequireRole('super-admin')
   @Serialize({
     ...RolePermissionResponse.FETCH_SUCCESS,
   })
-  async getPermissionIdsByRoleId(
-    @Param() params: RoleIdParamsDto,
-    @CurrentJwt() jwt: JwtPayload
-  ): Promise<string[]> {
+  async getPermissionIdsByRoleId(@Param() params: RoleIdParamsDto): Promise<string[]> {
     return this.rolePermissionService.getPermissionIds(params.roleId);
   }
 
@@ -94,13 +92,11 @@ export class RolePermissionController {
     status: RolePermissionError.FETCH_ERROR.statusCode,
     description: RolePermissionError.FETCH_ERROR.message,
   })
+  @RequireRole('super-admin')
   @Serialize({
     ...RolePermissionResponse.FETCH_SUCCESS,
   })
-  async getRoleIdsByPermissionId(
-    @Param() params: PermissionIdParamsDto,
-    @CurrentJwt() jwt: JwtPayload
-  ): Promise<string[]> {
+  async getRoleIdsByPermissionId(@Param() params: PermissionIdParamsDto): Promise<string[]> {
     return this.rolePermissionService.getRoleIds(params.permissionId);
   }
 
@@ -130,13 +126,11 @@ export class RolePermissionController {
     status: RolePermissionError.FETCH_ERROR.statusCode,
     description: RolePermissionError.FETCH_ERROR.message,
   })
+  @RequireRole('super-admin')
   @Serialize({
     ...RolePermissionResponse.FETCH_SUCCESS,
   })
-  async checkRolePermissionExists(
-    @Param() params: RolePermissionParamsDto,
-    @CurrentJwt() jwt: JwtPayload
-  ): Promise<boolean> {
+  async checkRolePermissionExists(@Param() params: RolePermissionParamsDto): Promise<boolean> {
     return this.rolePermissionService.exists(params.roleId, params.permissionId);
   }
 
@@ -172,13 +166,11 @@ export class RolePermissionController {
     status: RolePermissionError.ALREADY_EXISTS.statusCode,
     description: RolePermissionError.ALREADY_EXISTS.message,
   })
+  @RequireRole('super-admin')
   @Serialize({
     ...RolePermissionResponse.ASSIGN_SUCCESS,
   })
-  async assignRolePermission(
-    @Param() params: RolePermissionParamsDto,
-    @CurrentJwt() jwt: JwtPayload
-  ): Promise<void> {
+  async assignRolePermission(@Param() params: RolePermissionParamsDto): Promise<void> {
     await this.rolePermissionService.assignRolePermission(params);
   }
 
@@ -212,10 +204,8 @@ export class RolePermissionController {
     status: RolePermissionError.REVOKE_ERROR.statusCode,
     description: RolePermissionError.REVOKE_ERROR.message,
   })
-  async revokeRolePermission(
-    @Param() params: RolePermissionParamsDto,
-    @CurrentJwt() jwt: JwtPayload
-  ): Promise<void> {
+  @RequireRole('super-admin')
+  async revokeRolePermission(@Param() params: RolePermissionParamsDto): Promise<void> {
     await this.rolePermissionService.revokeRolePermission(params.roleId, params.permissionId);
   }
 
@@ -245,13 +235,13 @@ export class RolePermissionController {
     status: RolePermissionError.ASSIGN_MULTIPLE_ERROR.statusCode,
     description: RolePermissionError.ASSIGN_MULTIPLE_ERROR.message,
   })
+  @RequireRole('super-admin')
   @Serialize({
     ...RolePermissionResponse.ASSIGN_MULTIPLE_SUCCESS,
   })
   async assignMultiplePermissions(
     @Param() params: RoleIdParamsDto,
-    @Body() dto: PermissionIdsDto,
-    @CurrentJwt() jwt: JwtPayload
+    @Body() dto: PermissionIdsDto
   ): Promise<void> {
     await this.rolePermissionService.assignMultiplePermissions({
       roleId: params.roleId,
@@ -283,13 +273,13 @@ export class RolePermissionController {
     status: RolePermissionError.REVOKE_MULTIPLE_ERROR.statusCode,
     description: RolePermissionError.REVOKE_MULTIPLE_ERROR.message,
   })
+  @RequireRole('super-admin')
   @Serialize({
     ...RolePermissionResponse.REVOKE_MULTIPLE_SUCCESS,
   })
   async revokeMultiplePermissions(
     @Param() params: RoleIdParamsDto,
-    @Body() dto: PermissionIdsDto,
-    @CurrentJwt() jwt: JwtPayload
+    @Body() dto: PermissionIdsDto
   ): Promise<void> {
     await this.rolePermissionService.revokeMultiplePermissions({
       roleId: params.roleId,
@@ -321,13 +311,13 @@ export class RolePermissionController {
     status: RolePermissionError.REPLACE_ERROR.statusCode,
     description: RolePermissionError.REPLACE_ERROR.message,
   })
+  @RequireRole('super-admin')
   @Serialize({
     ...RolePermissionResponse.REPLACE_SUCCESS,
   })
   async replaceRolePermissions(
     @Param() params: RoleIdParamsDto,
-    @Body() dto: PermissionIdsDto,
-    @CurrentJwt() jwt: JwtPayload
+    @Body() dto: PermissionIdsDto
   ): Promise<void> {
     await this.rolePermissionService.replaceRolePermissions({
       roleId: params.roleId,

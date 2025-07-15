@@ -22,9 +22,9 @@ import {
   SwaggerApiPaginatedResponse,
   SwaggerApiErrorResponse,
 } from '@krgeobuk/swagger/decorators';
-import { JwtPayload } from '@krgeobuk/jwt/interfaces';
-import { CurrentJwt } from '@krgeobuk/jwt/decorators';
 import { AccessTokenGuard } from '@krgeobuk/jwt/guards';
+import { AuthorizationGuard } from '@krgeobuk/authorization/guards';
+import { RequireRole } from '@krgeobuk/authorization/decorators';
 import { RoleResponse } from '@krgeobuk/role/response';
 import { RoleError } from '@krgeobuk/role/exception';
 import { RoleIdParamsDto } from '@krgeobuk/shared/role/dtos';
@@ -41,6 +41,7 @@ import { RoleService } from './role.service.js';
 
 @SwaggerApiTags({ tags: ['roles'] })
 @SwaggerApiBearerAuth()
+@UseGuards(AccessTokenGuard, AuthorizationGuard)
 @Controller('roles')
 export class RoleController {
   constructor(private readonly roleService: RoleService) {}
@@ -60,7 +61,7 @@ export class RoleController {
     status: RoleError.ROLE_FETCH_ERROR.statusCode,
     description: RoleError.ROLE_FETCH_ERROR.message,
   })
-  @UseGuards(AccessTokenGuard)
+  @RequireRole('super-admin')
   @Serialize({
     dto: RolePaginatedSearchResultDto,
     ...RoleResponse.FETCH_SUCCESS,
@@ -85,14 +86,11 @@ export class RoleController {
     status: RoleError.ROLE_ALREADY_EXISTS.statusCode,
     description: RoleError.ROLE_ALREADY_EXISTS.message,
   })
-  @UseGuards(AccessTokenGuard)
+  @RequireRole('super-admin')
   @Serialize({
     ...RoleResponse.CREATE_SUCCESS,
   })
-  async createRole(
-    @Body() createRoleDto: CreateRoleDto,
-    @CurrentJwt() jwt: JwtPayload
-  ): Promise<void> {
+  async createRole(@Body() createRoleDto: CreateRoleDto): Promise<void> {
     await this.roleService.createRole(createRoleDto);
   }
 
@@ -118,7 +116,7 @@ export class RoleController {
     status: RoleError.ROLE_FETCH_ERROR.statusCode,
     description: RoleError.ROLE_FETCH_ERROR.message,
   })
-  @UseGuards(AccessTokenGuard)
+  @RequireRole('super-admin')
   @Serialize({
     dto: RoleDetailDto,
     ...RoleResponse.FETCH_SUCCESS,
@@ -149,14 +147,13 @@ export class RoleController {
     status: RoleError.ROLE_UPDATE_ERROR.statusCode,
     description: RoleError.ROLE_UPDATE_ERROR.message,
   })
-  @UseGuards(AccessTokenGuard)
+  @RequireRole('super-admin')
   @Serialize({
     ...RoleResponse.UPDATE_SUCCESS,
   })
   async updateRole(
     @Param() params: RoleIdParamsDto,
-    @Body() updateRoleDto: UpdateRoleDto,
-    @CurrentJwt() jwt: JwtPayload
+    @Body() updateRoleDto: UpdateRoleDto
   ): Promise<void> {
     await this.roleService.updateRole(params.roleId, updateRoleDto);
   }
@@ -182,11 +179,11 @@ export class RoleController {
     status: RoleError.ROLE_DELETE_ERROR.statusCode,
     description: RoleError.ROLE_DELETE_ERROR.message,
   })
-  @UseGuards(AccessTokenGuard)
+  @RequireRole('super-admin')
   @Serialize({
     ...RoleResponse.DELETE_SUCCESS,
   })
-  async deleteRole(@Param() params: RoleIdParamsDto, @CurrentJwt() jwt: JwtPayload): Promise<void> {
+  async deleteRole(@Param() params: RoleIdParamsDto): Promise<void> {
     await this.roleService.deleteRole(params.roleId);
   }
 }

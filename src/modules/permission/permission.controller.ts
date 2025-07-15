@@ -25,6 +25,8 @@ import {
 import { JwtPayload } from '@krgeobuk/jwt/interfaces';
 import { CurrentJwt } from '@krgeobuk/jwt/decorators';
 import { AccessTokenGuard } from '@krgeobuk/jwt/guards';
+import { AuthorizationGuard } from '@krgeobuk/authorization/guards';
+import { RequireRole } from '@krgeobuk/authorization/decorators';
 import { PermissionResponse } from '@krgeobuk/permission/response';
 import { PermissionError } from '@krgeobuk/permission/exception';
 import { PermissionIdParamsDto } from '@krgeobuk/shared/permission/dtos';
@@ -41,6 +43,7 @@ import { PermissionService } from './permission.service.js';
 
 @SwaggerApiTags({ tags: ['permissions'] })
 @SwaggerApiBearerAuth()
+@UseGuards(AccessTokenGuard, AuthorizationGuard)
 @Controller('permissions')
 export class PermissionController {
   constructor(private readonly permissionService: PermissionService) {}
@@ -60,7 +63,7 @@ export class PermissionController {
     status: PermissionError.PERMISSION_FETCH_ERROR.statusCode,
     description: PermissionError.PERMISSION_FETCH_ERROR.message,
   })
-  @UseGuards(AccessTokenGuard)
+  @RequireRole('super-admin')
   @Serialize({
     dto: PermissionPaginatedSearchResultDto,
     ...PermissionResponse.FETCH_SUCCESS,
@@ -88,7 +91,7 @@ export class PermissionController {
     status: PermissionError.PERMISSION_ALREADY_EXISTS.statusCode,
     description: PermissionError.PERMISSION_ALREADY_EXISTS.message,
   })
-  @UseGuards(AccessTokenGuard)
+  @RequireRole('super-admin')
   @Serialize({
     ...PermissionResponse.CREATE_SUCCESS,
   })
@@ -121,7 +124,7 @@ export class PermissionController {
     status: PermissionError.PERMISSION_FETCH_ERROR.statusCode,
     description: PermissionError.PERMISSION_FETCH_ERROR.message,
   })
-  @UseGuards(AccessTokenGuard)
+  @RequireRole('super-admin')
   @Serialize({
     dto: PermissionDetailDto,
     ...PermissionResponse.FETCH_SUCCESS,
@@ -155,7 +158,7 @@ export class PermissionController {
     status: PermissionError.PERMISSION_UPDATE_ERROR.statusCode,
     description: PermissionError.PERMISSION_UPDATE_ERROR.message,
   })
-  @UseGuards(AccessTokenGuard)
+  @RequireRole('super-admin')
   @Serialize({
     ...PermissionResponse.UPDATE_SUCCESS,
   })
@@ -188,7 +191,7 @@ export class PermissionController {
     status: PermissionError.PERMISSION_DELETE_ERROR.statusCode,
     description: PermissionError.PERMISSION_DELETE_ERROR.message,
   })
-  @UseGuards(AccessTokenGuard)
+  @RequireRole('super-admin')
   @Serialize({
     ...PermissionResponse.DELETE_SUCCESS,
   })

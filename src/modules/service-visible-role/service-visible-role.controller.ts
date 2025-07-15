@@ -19,9 +19,9 @@ import {
   SwaggerApiOkResponse,
   SwaggerApiErrorResponse,
 } from '@krgeobuk/swagger/decorators';
-import { JwtPayload } from '@krgeobuk/jwt/interfaces';
-import { CurrentJwt } from '@krgeobuk/jwt/decorators';
 import { AccessTokenGuard } from '@krgeobuk/jwt/guards';
+import { AuthorizationGuard } from '@krgeobuk/authorization/guards';
+import { RequireRole } from '@krgeobuk/authorization/decorators';
 import { Serialize } from '@krgeobuk/core/decorators';
 import { ServiceVisibleRoleParamsDto } from '@krgeobuk/shared/service-visible-role';
 import { ServiceIdParamsDto } from '@krgeobuk/shared/service';
@@ -34,7 +34,7 @@ import { ServiceVisibleRoleService } from './service-visible-role.service.js';
 
 @SwaggerApiTags({ tags: ['service-visible-roles'] })
 @SwaggerApiBearerAuth()
-@UseGuards(AccessTokenGuard)
+@UseGuards(AccessTokenGuard, AuthorizationGuard)
 @Controller()
 export class ServiceVisibleRoleController {
   constructor(private readonly svrService: ServiceVisibleRoleService) {}
@@ -63,13 +63,11 @@ export class ServiceVisibleRoleController {
     status: ServiceVisibleRoleError.FETCH_ERROR.statusCode,
     description: ServiceVisibleRoleError.FETCH_ERROR.message,
   })
+  @RequireRole('super-admin')
   @Serialize({
     ...ServiceVisibleRoleResponse.FETCH_SUCCESS,
   })
-  async getRoleIdsByServiceId(
-    @Param() params: ServiceIdParamsDto,
-    @CurrentJwt() jwt: JwtPayload
-  ): Promise<string[]> {
+  async getRoleIdsByServiceId(@Param() params: ServiceIdParamsDto): Promise<string[]> {
     return this.svrService.getRoleIds(params.serviceId);
   }
 
@@ -94,13 +92,11 @@ export class ServiceVisibleRoleController {
     status: ServiceVisibleRoleError.FETCH_ERROR.statusCode,
     description: ServiceVisibleRoleError.FETCH_ERROR.message,
   })
+  @RequireRole('super-admin')
   @Serialize({
     ...ServiceVisibleRoleResponse.FETCH_SUCCESS,
   })
-  async getServiceIdsByRoleId(
-    @Param() params: RoleIdParamsDto,
-    @CurrentJwt() jwt: JwtPayload
-  ): Promise<string[]> {
+  async getServiceIdsByRoleId(@Param() params: RoleIdParamsDto): Promise<string[]> {
     return this.svrService.getServiceIds(params.roleId);
   }
 
@@ -130,12 +126,12 @@ export class ServiceVisibleRoleController {
     status: ServiceVisibleRoleError.FETCH_ERROR.statusCode,
     description: ServiceVisibleRoleError.FETCH_ERROR.message,
   })
+  @RequireRole('super-admin')
   @Serialize({
     ...ServiceVisibleRoleResponse.FETCH_SUCCESS,
   })
   async checkServiceVisibleRoleExists(
-    @Param() params: ServiceVisibleRoleParamsDto,
-    @CurrentJwt() jwt: JwtPayload
+    @Param() params: ServiceVisibleRoleParamsDto
   ): Promise<boolean> {
     return this.svrService.exists(params.serviceId, params.roleId);
   }
@@ -172,13 +168,11 @@ export class ServiceVisibleRoleController {
     status: ServiceVisibleRoleError.SERVICE_VISIBLE_ROLE_ALREADY_EXISTS.statusCode,
     description: ServiceVisibleRoleError.SERVICE_VISIBLE_ROLE_ALREADY_EXISTS.message,
   })
+  @RequireRole('super-admin')
   @Serialize({
     ...ServiceVisibleRoleResponse.ASSIGN_SUCCESS,
   })
-  async assignServiceVisibleRole(
-    @Param() params: ServiceVisibleRoleParamsDto,
-    @CurrentJwt() jwt: JwtPayload
-  ): Promise<void> {
+  async assignServiceVisibleRole(@Param() params: ServiceVisibleRoleParamsDto): Promise<void> {
     await this.svrService.assignServiceVisibleRole({
       serviceId: params.serviceId,
       roleId: params.roleId,
@@ -215,13 +209,11 @@ export class ServiceVisibleRoleController {
     status: ServiceVisibleRoleError.SERVICE_VISIBLE_ROLE_NOT_FOUND.statusCode,
     description: ServiceVisibleRoleError.SERVICE_VISIBLE_ROLE_NOT_FOUND.message,
   })
+  @RequireRole('super-admin')
   @Serialize({
     ...ServiceVisibleRoleResponse.REVOKE_SUCCESS,
   })
-  async revokeServiceVisibleRole(
-    @Param() params: ServiceVisibleRoleParamsDto,
-    @CurrentJwt() jwt: JwtPayload
-  ): Promise<void> {
+  async revokeServiceVisibleRole(@Param() params: ServiceVisibleRoleParamsDto): Promise<void> {
     await this.svrService.revokeServiceVisibleRole(params.serviceId, params.roleId);
   }
 
@@ -251,13 +243,13 @@ export class ServiceVisibleRoleController {
     status: ServiceVisibleRoleError.ASSIGN_MULTIPLE_ERROR.statusCode,
     description: ServiceVisibleRoleError.ASSIGN_MULTIPLE_ERROR.message,
   })
+  @RequireRole('super-admin')
   @Serialize({
     ...ServiceVisibleRoleResponse.ASSIGN_MULTIPLE_SUCCESS,
   })
   async assignMultipleRoles(
     @Param() params: ServiceIdParamsDto,
-    @Body() dto: RoleIdsDto,
-    @CurrentJwt() jwt: JwtPayload
+    @Body() dto: RoleIdsDto
   ): Promise<void> {
     await this.svrService.assignMultipleRoles(params.serviceId, dto.roleIds);
   }
@@ -286,13 +278,13 @@ export class ServiceVisibleRoleController {
     status: ServiceVisibleRoleError.REVOKE_MULTIPLE_ERROR.statusCode,
     description: ServiceVisibleRoleError.REVOKE_MULTIPLE_ERROR.message,
   })
+  @RequireRole('super-admin')
   @Serialize({
     ...ServiceVisibleRoleResponse.REVOKE_MULTIPLE_SUCCESS,
   })
   async revokeMultipleRoles(
     @Param() params: ServiceIdParamsDto,
-    @Body() dto: RoleIdsDto,
-    @CurrentJwt() jwt: JwtPayload
+    @Body() dto: RoleIdsDto
   ): Promise<void> {
     await this.svrService.revokeMultipleRoles(params.serviceId, dto.roleIds);
   }
@@ -321,13 +313,13 @@ export class ServiceVisibleRoleController {
     status: ServiceVisibleRoleError.REPLACE_ERROR.statusCode,
     description: ServiceVisibleRoleError.REPLACE_ERROR.message,
   })
+  @RequireRole('super-admin')
   @Serialize({
     ...ServiceVisibleRoleResponse.REPLACE_SUCCESS,
   })
   async replaceServiceRoles(
     @Param() params: ServiceIdParamsDto,
-    @Body() dto: RoleIdsDto,
-    @CurrentJwt() jwt: JwtPayload
+    @Body() dto: RoleIdsDto
   ): Promise<void> {
     await this.svrService.replaceServiceRoles({
       serviceId: params.serviceId,

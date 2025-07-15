@@ -20,9 +20,9 @@ import {
   SwaggerApiOkResponse,
   SwaggerApiErrorResponse,
 } from '@krgeobuk/swagger/decorators';
-import { JwtPayload } from '@krgeobuk/jwt/interfaces';
-import { CurrentJwt } from '@krgeobuk/jwt/decorators';
 import { AccessTokenGuard } from '@krgeobuk/jwt/guards';
+import { AuthorizationGuard } from '@krgeobuk/authorization/guards';
+import { RequireRole } from '@krgeobuk/authorization/decorators';
 import { UserIdParamsDto } from '@krgeobuk/shared/user/dtos';
 import { RoleIdParamsDto } from '@krgeobuk/shared/role/dtos';
 import { UserRoleParamsDto } from '@krgeobuk/shared/user-role/dtos';
@@ -32,10 +32,9 @@ import { UserRoleResponse } from '@krgeobuk/user-role/response';
 
 import { UserRoleService } from './user-role.service.js';
 
-// 중간테이블 특성에 맞는 RESTful API 설계
 @SwaggerApiTags({ tags: ['user-roles'] })
 @SwaggerApiBearerAuth()
-@UseGuards(AccessTokenGuard)
+@UseGuards(AccessTokenGuard, AuthorizationGuard)
 @Controller()
 export class UserRoleController {
   constructor(private readonly userRoleService: UserRoleService) {}
@@ -63,13 +62,11 @@ export class UserRoleController {
     status: UserRoleError.FETCH_ERROR.statusCode,
     description: UserRoleError.FETCH_ERROR.message,
   })
+  @RequireRole('super-admin')
   @Serialize({
     ...UserRoleResponse.FETCH_SUCCESS,
   })
-  async getRoleIdsByUserId(
-    @Param() params: UserIdParamsDto,
-    @CurrentJwt() _jwt: JwtPayload
-  ): Promise<string[]> {
+  async getRoleIdsByUserId(@Param() params: UserIdParamsDto): Promise<string[]> {
     return this.userRoleService.getRoleIds(params.userId);
   }
 
@@ -94,13 +91,11 @@ export class UserRoleController {
     status: UserRoleError.FETCH_ERROR.statusCode,
     description: UserRoleError.FETCH_ERROR.message,
   })
+  @RequireRole('super-admin')
   @Serialize({
     ...UserRoleResponse.FETCH_SUCCESS,
   })
-  async getUserIdsByRoleId(
-    @Param() params: RoleIdParamsDto,
-    @CurrentJwt() _jwt: JwtPayload
-  ): Promise<string[]> {
+  async getUserIdsByRoleId(@Param() params: RoleIdParamsDto): Promise<string[]> {
     return this.userRoleService.getUserIds(params.roleId);
   }
 
@@ -130,13 +125,11 @@ export class UserRoleController {
     status: UserRoleError.FETCH_ERROR.statusCode,
     description: UserRoleError.FETCH_ERROR.message,
   })
+  @RequireRole('super-admin')
   @Serialize({
     ...UserRoleResponse.FETCH_SUCCESS,
   })
-  async checkUserRoleExists(
-    @Param() params: UserRoleParamsDto,
-    @CurrentJwt() _jwt: JwtPayload
-  ): Promise<boolean> {
+  async checkUserRoleExists(@Param() params: UserRoleParamsDto): Promise<boolean> {
     return this.userRoleService.exists(params.userId, params.roleId);
   }
 
@@ -172,13 +165,11 @@ export class UserRoleController {
     status: UserRoleError.ALREADY_ASSIGNED.statusCode,
     description: UserRoleError.ALREADY_ASSIGNED.message,
   })
+  @RequireRole('super-admin')
   @Serialize({
     ...UserRoleResponse.ASSIGN_SUCCESS,
   })
-  async assignUserRole(
-    @Param() params: UserRoleParamsDto,
-    @CurrentJwt() _jwt: JwtPayload
-  ): Promise<void> {
+  async assignUserRole(@Param() params: UserRoleParamsDto): Promise<void> {
     await this.userRoleService.assignRole(params.userId, params.roleId);
   }
 
@@ -212,10 +203,8 @@ export class UserRoleController {
     status: UserRoleError.REVOKE_ERROR.statusCode,
     description: UserRoleError.REVOKE_ERROR.message,
   })
-  async revokeUserRole(
-    @Param() params: UserRoleParamsDto,
-    @CurrentJwt() _jwt: JwtPayload
-  ): Promise<void> {
+  @RequireRole('super-admin')
+  async revokeUserRole(@Param() params: UserRoleParamsDto): Promise<void> {
     await this.userRoleService.revokeRole(params.userId, params.roleId);
   }
 
@@ -245,13 +234,13 @@ export class UserRoleController {
     status: UserRoleError.ASSIGN_MULTIPLE_ERROR.statusCode,
     description: UserRoleError.ASSIGN_MULTIPLE_ERROR.message,
   })
+  @RequireRole('super-admin')
   @Serialize({
     ...UserRoleResponse.ASSIGN_MULTIPLE_SUCCESS,
   })
   async assignMultipleRoles(
     @Param() params: UserIdParamsDto,
-    @Body() dto: RoleIdsDto,
-    @CurrentJwt() _jwt: JwtPayload
+    @Body() dto: RoleIdsDto
   ): Promise<void> {
     await this.userRoleService.assignMultipleRoles(params.userId, dto.roleIds);
   }
@@ -280,13 +269,13 @@ export class UserRoleController {
     status: UserRoleError.REVOKE_MULTIPLE_ERROR.statusCode,
     description: UserRoleError.REVOKE_MULTIPLE_ERROR.message,
   })
+  @RequireRole('super-admin')
   @Serialize({
     ...UserRoleResponse.REVOKE_MULTIPLE_SUCCESS,
   })
   async revokeMultipleRoles(
     @Param() params: UserIdParamsDto,
-    @Body() dto: RoleIdsDto,
-    @CurrentJwt() _jwt: JwtPayload
+    @Body() dto: RoleIdsDto
   ): Promise<void> {
     await this.userRoleService.revokeMultipleRoles(params.userId, dto.roleIds);
   }
@@ -311,13 +300,11 @@ export class UserRoleController {
     status: UserRoleError.REVOKE_ALL_FROM_USER_ERROR.statusCode,
     description: UserRoleError.REVOKE_ALL_FROM_USER_ERROR.message,
   })
+  @RequireRole('super-admin')
   @Serialize({
     ...UserRoleResponse.REVOKE_ALL_FROM_USER_SUCCESS,
   })
-  async revokeAllRolesFromUser(
-    @Param() params: UserIdParamsDto,
-    @CurrentJwt() _jwt: JwtPayload
-  ): Promise<void> {
+  async revokeAllRolesFromUser(@Param() params: UserIdParamsDto): Promise<void> {
     await this.userRoleService.revokeAllRolesFromUser(params.userId);
   }
 
@@ -341,13 +328,11 @@ export class UserRoleController {
     status: UserRoleError.REVOKE_ALL_FROM_ROLE_ERROR.statusCode,
     description: UserRoleError.REVOKE_ALL_FROM_ROLE_ERROR.message,
   })
+  @RequireRole('super-admin')
   @Serialize({
     ...UserRoleResponse.REVOKE_ALL_FROM_ROLE_SUCCESS,
   })
-  async revokeAllUsersFromRole(
-    @Param() params: RoleIdParamsDto,
-    @CurrentJwt() _jwt: JwtPayload
-  ): Promise<void> {
+  async revokeAllUsersFromRole(@Param() params: RoleIdParamsDto): Promise<void> {
     await this.userRoleService.revokeAllUsersFromRole(params.roleId);
   }
 
@@ -375,14 +360,11 @@ export class UserRoleController {
     status: UserRoleError.REPLACE_ERROR.statusCode,
     description: UserRoleError.REPLACE_ERROR.message,
   })
+  @RequireRole('super-admin')
   @Serialize({
     ...UserRoleResponse.REPLACE_SUCCESS,
   })
-  async replaceUserRoles(
-    @Param() params: UserIdParamsDto,
-    @Body() dto: RoleIdsDto,
-    @CurrentJwt() _jwt: JwtPayload
-  ): Promise<void> {
+  async replaceUserRoles(@Param() params: UserIdParamsDto, @Body() dto: RoleIdsDto): Promise<void> {
     await this.userRoleService.replaceUserRoles({
       userId: params.userId,
       roleIds: dto.roleIds,
