@@ -3,10 +3,10 @@ import { MessagePattern, Payload } from '@nestjs/microservices';
 
 import { AuthorizationTcpPatterns } from '@krgeobuk/authorization/tcp/patterns';
 import {
-  TcpCheckPermissionRequest,
-  TcpCheckRoleRequest,
-  TcpGetUserRolesRequest,
-  TcpGetUserPermissionsRequest,
+  TcpCheckPermission,
+  TcpCheckRole,
+  TcpGetUserRoles,
+  TcpGetUserPermissions,
 } from '@krgeobuk/authorization/tcp/interfaces';
 import { PermissionCheckResponse, RoleCheckResponse } from '@krgeobuk/shared/authorization';
 
@@ -21,9 +21,7 @@ export class AuthorizationTcpController {
   // ==================== 권한 체크 패턴 ====================
 
   @MessagePattern(AuthorizationTcpPatterns.CHECK_PERMISSION)
-  async checkPermission(
-    @Payload() data: TcpCheckPermissionRequest
-  ): Promise<PermissionCheckResponse> {
+  async checkPermission(@Payload() data: TcpCheckPermission): Promise<PermissionCheckResponse> {
     try {
       this.logger.debug('TCP permission check requested', {
         userId: data.userId,
@@ -53,7 +51,7 @@ export class AuthorizationTcpController {
   }
 
   @MessagePattern(AuthorizationTcpPatterns.CHECK_ROLE)
-  async checkRole(@Payload() data: TcpCheckRoleRequest): Promise<RoleCheckResponse> {
+  async checkRole(@Payload() data: TcpCheckRole): Promise<RoleCheckResponse> {
     try {
       this.logger.debug('TCP role check requested', {
         userId: data.userId,
@@ -85,7 +83,7 @@ export class AuthorizationTcpController {
   // ==================== 사용자 권한/역할 조회 패턴 ====================
 
   @MessagePattern(AuthorizationTcpPatterns.GET_USER_PERMISSIONS)
-  async getUserPermissions(@Payload() data: TcpGetUserPermissionsRequest): Promise<string[]> {
+  async getUserPermissions(@Payload() data: TcpGetUserPermissions): Promise<string[]> {
     try {
       this.logger.debug('TCP user permissions requested', {
         userId: data.userId,
@@ -115,7 +113,7 @@ export class AuthorizationTcpController {
   }
 
   @MessagePattern(AuthorizationTcpPatterns.GET_USER_ROLES)
-  async getUserRoles(@Payload() data: TcpGetUserRolesRequest): Promise<string[]> {
+  async getUserRoles(@Payload() data: TcpGetUserRoles): Promise<string[]> {
     try {
       this.logger.debug('TCP user roles requested', {
         userId: data.userId,
