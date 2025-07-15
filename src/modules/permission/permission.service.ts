@@ -5,11 +5,6 @@ import { EntityManager, FindOptionsWhere, In, UpdateResult, Not } from 'typeorm'
 import { firstValueFrom } from 'rxjs';
 
 import { PermissionException } from '@krgeobuk/permission/exception';
-import {
-  PermissionSearchQueryDto,
-  CreatePermissionDto,
-  UpdatePermissionDto,
-} from '@krgeobuk/permission/dtos';
 import type { PaginatedResult } from '@krgeobuk/core/interfaces';
 import type { Service } from '@krgeobuk/shared/service';
 import type { Role } from '@krgeobuk/shared/role';
@@ -18,10 +13,12 @@ import type {
   PermissionSearchResult,
   PermissionFilter,
   PermissionDetail,
+  CreatePermission,
+  UpdatePermission,
 } from '@krgeobuk/permission/interfaces';
 
 import { RolePermissionService } from '@modules/role-permission/index.js';
-import { RoleEntity, RoleService } from '@modules/role/index.js';
+import { RoleService } from '@modules/role/index.js';
 
 import { PermissionEntity } from './entities/permission.entity.js';
 import { PermissionRepository } from './permission.repository.js';
@@ -90,41 +87,10 @@ export class PermissionService {
     return this.permissionRepo.find({ where });
   }
 
-  async getPermissionById(permissionId: string): Promise<PermissionDetail> {
-    const permission = await this.findByIdOrFail(permissionId);
-
-    try {
-      const [service, roles] = await Promise.all([
-        this.getServiceById(permission.serviceId),
-        this.getRolesByPermissionId(permissionId),
-      ]);
-
-      return {
-        id: permission.id,
-        action: permission.action,
-        description: permission.description ?? '',
-        service,
-        roles,
-      };
-    } catch (error: unknown) {
-      this.logger.warn('Failed to enrich permission with external data, returning basic info', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        permissionId,
-        serviceId: permission.serviceId,
-      });
-
-      return {
-        id: permission.id,
-        action: permission.action,
-        description: permission.description ?? '',
-        service: { id: '', name: 'Service unavailable' },
-        roles: [],
-      };
-    }
-  }
+  // ==================== 검색 및 상세 조회 메서드 ====================
 
   async searchPermissions(
-    query: PermissionSearchQueryDto
+    query: PermissionSearchQuery
   ): Promise<PaginatedResult<PermissionSearchResult>> {
     const permissions = await this.permissionRepo.searchPermissions(query);
 
@@ -161,10 +127,42 @@ export class PermissionService {
     }
   }
 
-  async createPermission(
-    dto: CreatePermissionDto,
-    transactionManager?: EntityManager
-  ): Promise<void> {
+  async getPermissionById(permissionId: string): Promise<PermissionDetail> {
+    const permission = await this.findByIdOrFail(permissionId);
+
+    try {
+      const [service, roles] = await Promise.all([
+        this.getServiceById(permission.serviceId),
+        this.getRolesByPermissionId(permissionId),
+      ]);
+
+      return {
+        id: permission.id,
+        action: permission.action,
+        description: permission.description ?? '',
+        service,
+        roles,
+      };
+    } catch (error: unknown) {
+      this.logger.warn('Failed to enrich permission with external data, returning basic info', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        permissionId,
+        serviceId: permission.serviceId,
+      });
+
+      return {
+        id: permission.id,
+        action: permission.action,
+        description: permission.description ?? '',
+        service: { id: '', name: 'Service unavailable' },
+        roles: [],
+      };
+    }
+  }
+
+  // ==================== 변경 메서드 ====================
+
+  async createPermission(dto: CreatePermission, transactionManager?: EntityManager): Promise<void> {
     try {
       // 중복 권한 사전 체크
       if (dto.action && dto.serviceId) {
@@ -187,6 +185,7 @@ export class PermissionService {
       await this.permissionRepo.saveEntity(permissionEntity, transactionManager);
 
       this.logger.log('Permission created successfully', {
+        permissionId: permissionEntity.id,
         action: dto.action,
         serviceId: dto.serviceId,
       });
@@ -207,7 +206,7 @@ export class PermissionService {
 
   async updatePermission(
     permissionId: string,
-    dto: UpdatePermissionDto,
+    dto: UpdatePermission,
     transactionManager?: EntityManager
   ): Promise<void> {
     try {
@@ -242,7 +241,8 @@ export class PermissionService {
       await this.permissionRepo.updateEntity(permission, transactionManager);
 
       this.logger.log('Permission updated successfully', {
-        permissionId: permissionId,
+        permissionId,
+        action: permission.action,
         updatedFields: Object.keys(dto),
       });
     } catch (error: unknown) {
@@ -265,11 +265,23 @@ export class PermissionService {
       // 권한 존재 여부 확인
       const permission = await this.findByIdOrFail(permissionId);
 
+      // 권한에 할당된 역할이 있는지 확인
+      const roleIds = await this.rolePermissionService.getRoleIds(permissionId);
+      if (roleIds.length > 0) {
+        this.logger.warn('Permission deletion failed: permission has assigned roles', {
+          permissionId,
+          action: permission.action,
+          assignedRoles: roleIds.length,
+        });
+        throw PermissionException.permissionDeleteError();
+      }
+
       const result = await this.permissionRepo.softDelete(permissionId);
 
       this.logger.log('Permission deleted successfully', {
         permissionId,
         action: permission.action,
+        serviceId: permission.serviceId,
       });
 
       return result;
@@ -292,15 +304,8 @@ export class PermissionService {
   private async getRoleCountsByPermissionIds(
     permissionIds: string[]
   ): Promise<Map<string, number>> {
-    const roleIdsMap = await this.rolePermissionService.getRoleIdsBatch(permissionIds);
-    const roleCounts = new Map<string, number>();
-
-    permissionIds.forEach((permissionId) => {
-      const roleIds = roleIdsMap.get(permissionId) || [];
-      roleCounts.set(permissionId, roleIds.length);
-    });
-
-    return roleCounts;
+    // 최적화: 카운트 전용 메서드 사용
+    return await this.rolePermissionService.getRoleCountsBatch(permissionIds);
   }
 
   private async getServicesByQuery(
@@ -396,20 +401,11 @@ export class PermissionService {
       return [];
     }
 
-    // 같은 서버 내부이므로 직접 RoleService 사용
-    // roleIds로 각 역할을 개별 조회
-    const roles = await Promise.all(
-      roleIds.map(async (roleId) => {
-        const role = await this.roleService.findById(roleId);
-        return role;
-      })
-    );
-
-    // null 값 필터링
-    const validRoles = roles.filter((role): role is RoleEntity => role !== null);
+    // 최적화: 배치 처리로 N+1 쿼리 해결
+    const roles = await this.roleService.findByServiceIds(roleIds);
 
     // RoleEntity를 Role 인터페이스 형태로 변환
-    return validRoles.map((role) => ({
+    return roles.map((role) => ({
       id: role.id,
       name: role.name,
       description: role.description!,

@@ -22,14 +22,12 @@ import {
   SwaggerApiPaginatedResponse,
   SwaggerApiErrorResponse,
 } from '@krgeobuk/swagger/decorators';
-import { JwtPayload } from '@krgeobuk/jwt/interfaces';
-import { CurrentJwt } from '@krgeobuk/jwt/decorators';
 import { AccessTokenGuard } from '@krgeobuk/jwt/guards';
 import { AuthorizationGuard } from '@krgeobuk/authorization/guards';
 import { RequireRole } from '@krgeobuk/authorization/decorators';
 import { PermissionResponse } from '@krgeobuk/permission/response';
 import { PermissionError } from '@krgeobuk/permission/exception';
-import { PermissionIdParamsDto } from '@krgeobuk/shared/permission/dtos';
+import { PermissionIdParamsDto } from '@krgeobuk/shared/permission';
 import {
   PermissionSearchQueryDto,
   PermissionDetailDto,
@@ -69,8 +67,7 @@ export class PermissionController {
     ...PermissionResponse.FETCH_SUCCESS,
   })
   async searchPermissions(
-    @Query() query: PermissionSearchQueryDto,
-    @CurrentJwt() jwt: JwtPayload
+    @Query() query: PermissionSearchQueryDto
   ): Promise<PermissionPaginatedSearchResultDto> {
     return await this.permissionService.searchPermissions(query);
   }
@@ -95,10 +92,7 @@ export class PermissionController {
   @Serialize({
     ...PermissionResponse.CREATE_SUCCESS,
   })
-  async createPermission(
-    @Body() dto: CreatePermissionDto,
-    @CurrentJwt() jwt: JwtPayload
-  ): Promise<void> {
+  async createPermission(@Body() dto: CreatePermissionDto): Promise<void> {
     await this.permissionService.createPermission(dto);
   }
 
@@ -129,10 +123,7 @@ export class PermissionController {
     dto: PermissionDetailDto,
     ...PermissionResponse.FETCH_SUCCESS,
   })
-  async getPermissionById(
-    @Param() params: PermissionIdParamsDto,
-    @CurrentJwt() jwt: JwtPayload
-  ): Promise<PermissionDetailDto> {
+  async getPermissionById(@Param() params: PermissionIdParamsDto): Promise<PermissionDetailDto> {
     return await this.permissionService.getPermissionById(params.permissionId);
   }
 
@@ -164,8 +155,7 @@ export class PermissionController {
   })
   async updatePermission(
     @Param() params: PermissionIdParamsDto,
-    @Body() dto: UpdatePermissionDto,
-    @CurrentJwt() jwt: JwtPayload
+    @Body() dto: UpdatePermissionDto
   ): Promise<void> {
     await this.permissionService.updatePermission(params.permissionId, dto);
   }
@@ -195,10 +185,7 @@ export class PermissionController {
   @Serialize({
     ...PermissionResponse.DELETE_SUCCESS,
   })
-  async deletePermission(
-    @Param() params: PermissionIdParamsDto,
-    @CurrentJwt() jwt: JwtPayload
-  ): Promise<void> {
+  async deletePermission(@Param() params: PermissionIdParamsDto): Promise<void> {
     await this.permissionService.deletePermission(params.permissionId);
   }
 }

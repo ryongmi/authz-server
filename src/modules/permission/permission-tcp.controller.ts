@@ -9,9 +9,9 @@ import type {
   CreatePermission,
 } from '@krgeobuk/permission/interfaces';
 import type {
-  TcpPermissionParams,
-  TcpMultiServiceParams,
-  TcpPermissionUpdateParams,
+  TcpPermissionId,
+  TcpMultiService,
+  TcpPermissionUpdate,
 } from '@krgeobuk/permission/tcp/interfaces';
 import { PermissionTcpPatterns } from '@krgeobuk/permission/tcp/patterns';
 
@@ -85,7 +85,7 @@ export class PermissionTcpController {
    * 권한 ID로 상세 정보 조회
    */
   @MessagePattern(PermissionTcpPatterns.FIND_BY_ID)
-  async findPermissionById(@Payload() data: TcpPermissionParams): Promise<PermissionDetail | null> {
+  async findPermissionById(@Payload() data: TcpPermissionId): Promise<PermissionDetail | null> {
     this.logger.debug(`TCP permission detail request: ${data.permissionId}`);
 
     try {
@@ -105,9 +105,7 @@ export class PermissionTcpController {
    * 권한 정보 수정
    */
   @MessagePattern(PermissionTcpPatterns.UPDATE)
-  async updatePermission(
-    @Payload() data: TcpPermissionUpdateParams
-  ): Promise<TcpOperationResponse> {
+  async updatePermission(@Payload() data: TcpPermissionUpdate): Promise<TcpOperationResponse> {
     this.logger.log('TCP permission update requested', { permissionId: data.permissionId });
 
     try {
@@ -127,7 +125,7 @@ export class PermissionTcpController {
    * 권한 삭제 (소프트 삭제)
    */
   @MessagePattern(PermissionTcpPatterns.DELETE)
-  async deletePermission(@Payload() data: TcpPermissionParams): Promise<TcpOperationResponse> {
+  async deletePermission(@Payload() data: TcpPermissionId): Promise<TcpOperationResponse> {
     this.logger.log('TCP permission deletion requested', { permissionId: data.permissionId });
 
     try {
@@ -147,9 +145,7 @@ export class PermissionTcpController {
    * 서비스 ID로 권한 목록 조회
    */
   @MessagePattern(PermissionTcpPatterns.FIND_BY_SERVICE_IDS)
-  async findPermissionsByServiceIds(
-    @Payload() data: TcpMultiServiceParams
-  ): Promise<PermissionEntity[]> {
+  async findPermissionsByServiceIds(@Payload() data: TcpMultiService): Promise<PermissionEntity[]> {
     this.logger.debug('TCP permissions by services request', {
       serviceCount: data.serviceIds.length,
     });
@@ -173,7 +169,7 @@ export class PermissionTcpController {
    * 권한 존재 여부 확인
    */
   @MessagePattern(PermissionTcpPatterns.EXISTS)
-  async checkPermissionExists(@Payload() data: TcpPermissionParams): Promise<boolean> {
+  async checkPermissionExists(@Payload() data: TcpPermissionId): Promise<boolean> {
     this.logger.debug(`TCP permission existence check: ${data.permissionId}`);
 
     try {
