@@ -92,6 +92,29 @@ export class UserRoleService {
     }
   }
 
+  /**
+   * 여러 권한의 사용자 수 조회 (배치) - 성능 최적화
+   */
+  async getRoleCountsBatch(roleIds: string[]): Promise<Map<string, number>> {
+    try {
+      const userIdsMap = await this.userRoleRepo.findUserIdsByRoleIds(roleIds);
+      const userCounts = new Map<string, number>();
+
+      roleIds.forEach((roleId) => {
+        const roleIds = userIdsMap.get(roleId) || [];
+        userCounts.set(roleId, roleIds.length);
+      });
+
+      return userCounts;
+    } catch (error: unknown) {
+      this.logger.error('역할별 사용자 수 조회 실패', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        roleCount: roleIds.length,
+      });
+      throw UserRoleException.fetchError();
+    }
+  }
+
   // ==================== 변경 메서드 ====================
 
   /**
