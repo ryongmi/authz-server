@@ -4,15 +4,17 @@ import { ClientProxy } from '@nestjs/microservices';
 import { EntityManager, FindOptionsWhere, In, UpdateResult, Not } from 'typeorm';
 import { firstValueFrom } from 'rxjs';
 
+import { RoleException } from '@krgeobuk/role/exception';
 import type { PaginatedResult } from '@krgeobuk/core/interfaces';
 import type { User } from '@krgeobuk/shared/user';
 import type { Service } from '@krgeobuk/shared/service';
-import { RoleException } from '@krgeobuk/role/exception';
 import type {
   RoleSearchQuery,
   RoleSearchResult,
   RoleDetail,
   RoleFilter,
+  CreateRole,
+  UpdateRole,
 } from '@krgeobuk/role/interfaces';
 
 // UserRoleService는 실제 구현에 따라 필요할 수 있음
@@ -42,11 +44,20 @@ export class RoleService {
     const role = await this.roleRepo.findOneById(roleId);
 
     if (!role) {
-      this.logger.debug('Role not found', { roleId });
+      this.logger.debug('역할을 찾을 수 없음', { roleId });
       throw RoleException.roleNotFound();
     }
 
     return role;
+  }
+
+  async findByIds(roleIds: string[]): Promise<RoleEntity[]> {
+    if (roleIds.length === 0) return [];
+
+    return this.roleRepo.find({
+      where: { id: In(roleIds) },
+      order: { name: 'DESC' },
+    });
   }
 
   async findByServiceIds(serviceIds: string[]): Promise<RoleEntity[]> {
@@ -105,7 +116,7 @@ export class RoleService {
         users,
       };
     } catch (error: unknown) {
-      this.logger.warn('Failed to enrich role with external data, returning basic info', {
+      this.logger.warn('외부 데이터로 역할 정보 보강 실패, 기본 정보 반환', {
         error: error instanceof Error ? error.message : 'Unknown error',
         roleId,
         serviceId: role.serviceId,
@@ -132,19 +143,19 @@ export class RoleService {
     const roleIds = roles.items.map((role) => role.id!);
 
     try {
-      const [userRolesMap, services] = await Promise.all([
+      const [userCounts, services] = await Promise.all([
         this.getUserRolesByRoleIds(roleIds),
         this.getServicesByQuery(query, roles.items),
       ]);
 
-      const items = this.buildRoleSearchResults(roles.items, userRolesMap, services);
+      const items = this.buildRoleSearchResults(roles.items, userCounts, services);
 
       return {
         items,
         pageInfo: roles.pageInfo,
       };
     } catch (error: unknown) {
-      this.logger.warn('TCP service communication failed, using fallback data', {
+      this.logger.warn('TCP 서비스 통신 실패, 대체 데이터 사용', {
         error: error instanceof Error ? error.message : 'Unknown error',
         serviceId: query.serviceId,
         roleCount: roles.items.length,
@@ -158,97 +169,98 @@ export class RoleService {
     }
   }
 
-  async createRole(attrs: Partial<RoleEntity>, transactionManager?: EntityManager): Promise<void> {
+  async createRole(dto: CreateRole, transactionManager?: EntityManager): Promise<void> {
     try {
       // 중복 역할명 사전 체크
-      if (attrs.name && attrs.serviceId) {
+      if (dto.name && dto.serviceId) {
         const existingRole = await this.roleRepo.findOne({
-          where: { name: attrs.name, serviceId: attrs.serviceId },
+          where: { name: dto.name, serviceId: dto.serviceId },
         });
 
         if (existingRole) {
-          this.logger.warn('Role creation failed: duplicate name in service', {
-            name: attrs.name,
-            serviceId: attrs.serviceId,
+          this.logger.warn('역할 생성 실패: 서비스 내 중복 이름', {
+            name: dto.name,
+            serviceId: dto.serviceId,
           });
           throw RoleException.roleAlreadyExists();
         }
       }
 
       const roleEntity = new RoleEntity();
-      Object.assign(roleEntity, attrs);
+      Object.assign(roleEntity, dto);
 
       await this.roleRepo.saveEntity(roleEntity, transactionManager);
 
-      this.logger.log('Role created successfully', {
-        name: attrs.name,
-        serviceId: attrs.serviceId,
+      this.logger.log('역할 생성 성공', {
+        roleId: roleEntity.id,
+        name: dto.name,
+        serviceId: dto.serviceId,
       });
     } catch (error: unknown) {
       if (error instanceof HttpException) {
         throw error; // 이미 처리된 예외는 그대로 전파
       }
 
-      this.logger.error('Role creation failed', {
+      this.logger.error('역할 생성 실패', {
         error: error instanceof Error ? error.message : 'Unknown error',
-        name: attrs.name,
-        serviceId: attrs.serviceId,
+        name: dto.name,
+        serviceId: dto.serviceId,
       });
 
-      // 데이터베이스 제약조건 위반 등의 에러
       throw RoleException.roleCreateError();
     }
   }
 
   async updateRole(
     roleId: string,
-    attrs: Partial<RoleEntity>,
+    dto: UpdateRole,
     transactionManager?: EntityManager
   ): Promise<void> {
     try {
       const role = await this.roleRepo.findOneById(roleId);
 
       if (!role) {
-        this.logger.warn('Role update failed: role not found', { roleId });
+        this.logger.warn('역할 업데이트 실패: 역할을 찾을 수 없음', { roleId });
         throw RoleException.roleNotFound();
       }
 
       // 이름 변경 시 중복 체크
-      if (attrs.name && attrs.name !== role.name) {
+      if (dto.name && dto.name !== role.name) {
         const existingRole = await this.roleRepo.findOne({
           where: {
-            name: attrs.name,
+            name: dto.name,
             serviceId: role.serviceId,
             id: Not(roleId), // 현재 역할 제외
           },
         });
 
         if (existingRole) {
-          this.logger.warn('Role update failed: duplicate name in service', {
+          this.logger.warn('역할 업데이트 실패: 서비스 내 중복 이름', {
             roleId,
-            newName: attrs.name,
+            newName: dto.name,
             serviceId: role.serviceId,
           });
           throw RoleException.roleAlreadyExists();
         }
       }
 
-      Object.assign(role, attrs);
+      Object.assign(role, dto);
       await this.roleRepo.updateEntity(role, transactionManager);
 
-      this.logger.log('Role updated successfully', {
+      this.logger.log('역할 업데이트 성공', {
         roleId,
-        updatedFields: Object.keys(attrs),
+        name: role.name,
+        updatedFields: Object.keys(dto),
       });
     } catch (error: unknown) {
       if (error instanceof HttpException) {
         throw error; // 이미 처리된 예외는 그대로 전파
       }
 
-      this.logger.error('Role update failed', {
+      this.logger.error('역할 업데이트 실패', {
         error: error instanceof Error ? error.message : 'Unknown error',
         roleId,
-        attrs,
+        dto,
       });
 
       throw RoleException.roleUpdateError();
@@ -260,20 +272,19 @@ export class RoleService {
       // 역할 존재 여부 확인
       const role = await this.findByIdOrFail(roleId);
 
-      // 역할에 할당된 사용자가 있는지 확인
-      const userIds = await this.userRoleService.getUserIds(roleId);
-      if (userIds.length > 0) {
-        this.logger.warn('Role deletion failed: role has assigned users', {
+      // 역할에 할당된 사용자가 있는지 확인 (최적화)
+      const hasUsers = await this.userRoleService.hasUsersForRole(roleId);
+      if (hasUsers) {
+        this.logger.warn('역할 삭제 실패: 역할에 할당된 사용자가 있음', {
           roleId,
           roleName: role.name,
-          assignedUsers: userIds.length,
         });
-        throw RoleException.roleDeleteError(); // 할당된 사용자가 있어서 삭제 불가
+        throw RoleException.roleDeleteError();
       }
 
       const result = await this.roleRepo.softDelete(roleId);
 
-      this.logger.log('Role deleted successfully', {
+      this.logger.log('역할 삭제 성공', {
         roleId,
         roleName: role.name,
       });
@@ -284,7 +295,7 @@ export class RoleService {
         throw error; // 이미 처리된 예외는 그대로 전파
       }
 
-      this.logger.error('Role deletion failed', {
+      this.logger.error('역할 삭제 실패', {
         error: error instanceof Error ? error.message : 'Unknown error',
         roleId,
       });
@@ -295,8 +306,8 @@ export class RoleService {
 
   // ==================== PRIVATE HELPER METHODS ====================
 
-  private async getUserRolesByRoleIds(roleIds: string[]): Promise<Map<string, string[]>> {
-    return this.userRoleService.getUserIdsBatch(roleIds);
+  private async getUserRolesByRoleIds(roleIds: string[]): Promise<Map<string, number>> {
+    return this.userRoleService.getRoleCountsBatch(roleIds);
   }
 
   private async getServicesByQuery(
@@ -314,7 +325,7 @@ export class RoleService {
         this.portalClient.send<Service | Service[]>(serviceMsgPattern, serviceMsgPayload)
       );
     } catch (error: unknown) {
-      this.logger.warn('Failed to fetch services from portal service, using fallback', {
+      this.logger.warn('포털 서비스에서 서비스 정보 조회 실패, 대체 데이터 사용', {
         error: error instanceof Error ? error.message : 'Unknown error',
         serviceMsgPattern,
         serviceIds: Array.isArray(serviceIds) ? serviceIds : [serviceIds],
@@ -333,7 +344,7 @@ export class RoleService {
 
   private buildRoleSearchResults(
     roles: Partial<RoleEntity>[],
-    userRolesMap: Map<string, string[]>,
+    userCounts: Map<string, number>,
     services: Service | Service[]
   ): RoleSearchResult[] {
     return roles.map((role) => {
@@ -342,7 +353,7 @@ export class RoleService {
           ? (services.find((s) => s.id === role.serviceId) ?? { id: '', name: 'Unknown Service' })
           : services;
 
-      const userCount = userRolesMap.get(role.id!) ? userRolesMap.get(role.id!)!.length : 0;
+      const userCount = userCounts.get(role.id!) || 0;
 
       return {
         id: role.id!,
@@ -372,7 +383,7 @@ export class RoleService {
         this.portalClient.send<Service>('service.findById', { serviceId })
       );
     } catch (error: unknown) {
-      this.logger.warn('Failed to fetch service from portal service, using fallback', {
+      this.logger.warn('포털 서비스에서 서비스 정보 조회 실패, 대체 데이터 사용', {
         error: error instanceof Error ? error.message : 'Unknown error',
         serviceId,
       });
@@ -392,7 +403,7 @@ export class RoleService {
     try {
       return await firstValueFrom(this.authClient.send<User[]>('user.findByIds', { userIds }));
     } catch (error: unknown) {
-      this.logger.warn('Failed to fetch users from auth service, using fallback', {
+      this.logger.warn('인증 서비스에서 사용자 정보 조회 실패, 대체 데이터 사용', {
         error: error instanceof Error ? error.message : 'Unknown error',
         userIds,
         roleId,

@@ -7,8 +7,8 @@ import type {
   RoleSearchResult,
   RoleDetail,
   CreateRole,
-  UpdateRole,
 } from '@krgeobuk/role/interfaces';
+import { TcpRoleId, TcpMultiServiceIds, TcpRoleUpdate } from '@krgeobuk/role/tcp';
 
 import { RoleEntity } from './entities/role.entity.js';
 import { RoleService } from './role.service.js';
@@ -80,7 +80,7 @@ export class RoleTcpController {
    * 역할 ID로 상세 정보 조회
    */
   @MessagePattern('role.findById')
-  async findById(@Payload() data: { roleId: string }): Promise<RoleDetail | null> {
+  async findById(@Payload() data: TcpRoleId): Promise<RoleDetail | null> {
     this.logger.debug(`TCP role detail request: ${data.roleId}`);
 
     try {
@@ -100,9 +100,7 @@ export class RoleTcpController {
    * 역할 정보 수정
    */
   @MessagePattern('role.update')
-  async update(
-    @Payload() data: { roleId: string; updateData: UpdateRole }
-  ): Promise<TcpOperationResponse> {
+  async update(@Payload() data: TcpRoleUpdate): Promise<TcpOperationResponse> {
     this.logger.log('TCP role update requested', { roleId: data.roleId });
 
     try {
@@ -122,7 +120,7 @@ export class RoleTcpController {
    * 역할 삭제 (소프트 삭제)
    */
   @MessagePattern('role.delete')
-  async delete(@Payload() data: { roleId: string }): Promise<TcpOperationResponse> {
+  async delete(@Payload() data: TcpRoleId): Promise<TcpOperationResponse> {
     this.logger.log('TCP role deletion requested', { roleId: data.roleId });
 
     try {
@@ -142,7 +140,7 @@ export class RoleTcpController {
    * 서비스 ID로 역할 목록 조회
    */
   @MessagePattern('role.findByServiceIds')
-  async findByServiceIds(@Payload() data: { serviceIds: string[] }): Promise<RoleEntity[]> {
+  async findByServiceIds(@Payload() data: TcpMultiServiceIds): Promise<RoleEntity[]> {
     this.logger.debug('TCP roles by services request', {
       serviceCount: data.serviceIds.length,
     });
@@ -164,7 +162,7 @@ export class RoleTcpController {
    * 역할 존재 여부 확인
    */
   @MessagePattern('role.exists')
-  async exists(@Payload() data: { roleId: string }): Promise<boolean> {
+  async exists(@Payload() data: TcpRoleId): Promise<boolean> {
     this.logger.debug(`TCP role existence check: ${data.roleId}`);
 
     try {
