@@ -1,10 +1,17 @@
 import { Module } from '@nestjs/common';
 
-import { AuthorizationController } from './authorization.controller';
-import { AuthorizationService } from './authorization.service';
+import { UserRoleModule } from '@modules/user-role/index.js';
+import { RolePermissionModule } from '@modules/role-permission/index.js';
+import { ServiceVisibleRoleModule } from '@modules/service-visible-role/index.js';
+
+import { AuthorizationController } from './authorization.controller.js';
+import { AuthorizationService } from './authorization.service.js';
+import { AuthorizationTcpController } from './authorization-tcp.controller.js';
 
 @Module({
-  controllers: [AuthorizationController],
-  providers: [AuthorizationService]
+  imports: [UserRoleModule, RolePermissionModule, ServiceVisibleRoleModule],
+  controllers: [AuthorizationController, AuthorizationTcpController],
+  providers: [AuthorizationService],
+  exports: [AuthorizationService],
 })
 export class AuthorizationModule {}
