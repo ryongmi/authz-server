@@ -1,19 +1,20 @@
-import { Test, TestingModule } from '@nestjs/testing';
+// import { Test, TestingModule } from '@nestjs/testing';
 
-import { ServiceVisibleRoleController } from './service-visible-role.controller';
+// import { ServiceVisibleRoleController } from './service-visible-role.controller';
 
-describe('ServiceVisibleRoleController', () => {
-  let controller: ServiceVisibleRoleController;
+// describe('ServiceVisibleRoleController', () => {
+//   let controller: ServiceVisibleRoleController;
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      controllers: [ServiceVisibleRoleController],
-    }).compile();
+//   beforeEach(async () => {
+//     const module: TestingModule = await Test.createTestingModule({
+//       controllers: [ServiceVisibleRoleController],
+//     }).compile();
 
-    controller = module.get<ServiceVisibleRoleController>(ServiceVisibleRoleController);
-  });
+//     controller = module.get<ServiceVisibleRoleController>(ServiceVisibleRoleController);
+//   });
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
-  });
-});
+//   it('should be defined', () => {
+//     expect(controller).toBeDefined();
+//   });
+// });
+

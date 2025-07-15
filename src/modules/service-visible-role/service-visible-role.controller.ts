@@ -251,7 +251,10 @@ export class ServiceVisibleRoleController {
     @Param() params: ServiceIdParamsDto,
     @Body() dto: RoleIdsDto
   ): Promise<void> {
-    await this.svrService.assignMultipleRoles(params.serviceId, dto.roleIds);
+    await this.svrService.assignMultipleRoles({
+      serviceId: params.serviceId,
+      roleIds: dto.roleIds,
+    });
   }
 
   @Delete('services/:serviceId/roles/batch')
@@ -286,7 +289,10 @@ export class ServiceVisibleRoleController {
     @Param() params: ServiceIdParamsDto,
     @Body() dto: RoleIdsDto
   ): Promise<void> {
-    await this.svrService.revokeMultipleRoles(params.serviceId, dto.roleIds);
+    await this.svrService.revokeMultipleRoles({
+      serviceId: params.serviceId,
+      roleIds: dto.roleIds,
+    });
   }
 
   @Put('services/:serviceId/roles')

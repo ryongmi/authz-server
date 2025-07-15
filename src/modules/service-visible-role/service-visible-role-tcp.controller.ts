@@ -2,11 +2,11 @@ import { Controller, Logger } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 
 import { TcpOperationResponse } from '@krgeobuk/core/interfaces';
-import type { TcpServiceParams } from '@krgeobuk/service/tcp/interfaces';
-import type { TcpRoleParams } from '@krgeobuk/role/tcp/interfaces';
+import type { TcpServiceId } from '@krgeobuk/service/tcp';
+import type { TcpRoleId } from '@krgeobuk/role/tcp/interfaces';
 import {
   ServiceVisibleRoleTcpPatterns,
-  type TcpServiceVisibleRoleParams,
+  type TcpServiceVisibleRole,
   type TcpServiceRoleBatch,
 } from '@krgeobuk/service-visible-role/tcp';
 
@@ -21,7 +21,7 @@ export class ServiceVisibleRoleTcpController {
   // ==================== 조회 메서드 (양방향 관계 조회) ====================
 
   @MessagePattern(ServiceVisibleRoleTcpPatterns.FIND_ROLES_BY_SERVICE)
-  async findRoleIdsByServiceId(@Payload() data: TcpServiceParams): Promise<string[]> {
+  async findRoleIdsByServiceId(@Payload() data: TcpServiceId): Promise<string[]> {
     try {
       this.logger.debug('TCP service-visible-role find roles by service requested', {
         serviceId: data.serviceId,
@@ -37,7 +37,7 @@ export class ServiceVisibleRoleTcpController {
   }
 
   @MessagePattern(ServiceVisibleRoleTcpPatterns.FIND_SERVICES_BY_ROLE)
-  async findServiceIdsByRoleId(@Payload() data: TcpRoleParams): Promise<string[]> {
+  async findServiceIdsByRoleId(@Payload() data: TcpRoleId): Promise<string[]> {
     try {
       this.logger.debug('TCP service-visible-role find services by role requested', {
         roleId: data.roleId,
@@ -55,9 +55,7 @@ export class ServiceVisibleRoleTcpController {
   // ==================== 존재 확인 ====================
 
   @MessagePattern(ServiceVisibleRoleTcpPatterns.EXISTS)
-  async checkServiceVisibleRoleExists(
-    @Payload() data: TcpServiceVisibleRoleParams
-  ): Promise<boolean> {
+  async checkServiceVisibleRoleExists(@Payload() data: TcpServiceVisibleRole): Promise<boolean> {
     try {
       this.logger.debug('TCP service-visible-role exists check requested', {
         serviceId: data.serviceId,
@@ -76,14 +74,17 @@ export class ServiceVisibleRoleTcpController {
 
   // ==================== 배치 처리 (할당 → 교체) ====================
 
-  @MessagePattern(ServiceVisibleRoleTcpPatterns.ASSIGN_MULTIPLE_ROLES)
+  @MessagePattern(ServiceVisibleRoleTcpPatterns.ASSIGN_MULTIPLE)
   async assignMultipleRoles(@Payload() data: TcpServiceRoleBatch): Promise<TcpOperationResponse> {
     try {
       this.logger.log('TCP service-visible-role assign multiple roles requested', {
         serviceId: data.serviceId,
         roleCount: data.roleIds.length,
       });
-      await this.svrService.assignMultipleRoles(data.serviceId, data.roleIds);
+      await this.svrService.assignMultipleRoles({
+        serviceId: data.serviceId,
+        roleIds: data.roleIds,
+      });
       return { success: true };
     } catch (error: unknown) {
       this.logger.error('TCP service-visible-role assign multiple roles failed', {
@@ -95,14 +96,17 @@ export class ServiceVisibleRoleTcpController {
     }
   }
 
-  @MessagePattern(ServiceVisibleRoleTcpPatterns.REVOKE_MULTIPLE_ROLES)
+  @MessagePattern(ServiceVisibleRoleTcpPatterns.REVOKE_MULTIPLE)
   async revokeMultipleRoles(@Payload() data: TcpServiceRoleBatch): Promise<TcpOperationResponse> {
     try {
       this.logger.log('TCP service-visible-role revoke multiple roles requested', {
         serviceId: data.serviceId,
         roleCount: data.roleIds.length,
       });
-      await this.svrService.revokeMultipleRoles(data.serviceId, data.roleIds);
+      await this.svrService.revokeMultipleRoles({
+        serviceId: data.serviceId,
+        roleIds: data.roleIds,
+      });
       return { success: true };
     } catch (error: unknown) {
       this.logger.error('TCP service-visible-role revoke multiple roles failed', {

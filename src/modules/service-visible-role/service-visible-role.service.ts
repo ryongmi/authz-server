@@ -1,7 +1,10 @@
 import { Injectable, Logger, HttpException } from '@nestjs/common';
 
+import { In } from 'typeorm';
+
 import { ServiceVisibleRoleException } from '@krgeobuk/service-visible-role/exception';
-import type { AssignServiceVisibleRole } from '@krgeobuk/service-visible-role/interfaces';
+import type { TcpServiceVisibleRole } from '@krgeobuk/service-visible-role/tcp';
+import type { ServiceVisibleRoleBatchAssignmentResult } from '@krgeobuk/service-visible-role/tcp/interfaces';
 
 import { ServiceVisibleRoleEntity } from './entities/service-visible-role.entity.js';
 import { ServiceVisibleRoleRepository } from './service-visible-role.repository.js';
@@ -12,9 +15,7 @@ export class ServiceVisibleRoleService {
 
   constructor(private readonly svrRepo: ServiceVisibleRoleRepository) {}
 
-  // ==================== PUBLIC METHODS ====================
-
-  // Level 1: 기본 Building Blocks (재사용 가능한 기본 메서드들)
+  // ==================== 조회 메서드 (ID 목록 반환) ====================
 
   /**
    * 서비스의 역할 ID 목록 조회
@@ -92,16 +93,16 @@ export class ServiceVisibleRoleService {
     }
   }
 
-  // Level 2: 컨트롤러 매칭 메서드 (Level 1 조합 + 비즈니스 로직)
+  // ==================== 변경 메서드 ====================
 
   /**
    * 단일 서비스-역할 할당
    */
-  async assignServiceVisibleRole(dto: AssignServiceVisibleRole): Promise<void> {
+  async assignServiceVisibleRole(dto: TcpServiceVisibleRole): Promise<void> {
     try {
       const exists = await this.exists(dto.serviceId, dto.roleId);
       if (exists) {
-        this.logger.warn('Service visible role already assigned', {
+        this.logger.warn('서비스-역할 관계 이미 존재', {
           serviceId: dto.serviceId,
           roleId: dto.roleId,
         });
@@ -109,12 +110,11 @@ export class ServiceVisibleRoleService {
       }
 
       const entity = new ServiceVisibleRoleEntity();
-      entity.serviceId = dto.serviceId;
-      entity.roleId = dto.roleId;
+      Object.assign(entity, dto);
 
-      await this.svrRepo.saveEntity(entity);
+      await this.svrRepo.save(entity);
 
-      this.logger.log('Service visible role assigned successfully', {
+      this.logger.log('서비스-역할 할당 성공', {
         serviceId: dto.serviceId,
         roleId: dto.roleId,
       });
@@ -123,7 +123,7 @@ export class ServiceVisibleRoleService {
         throw error;
       }
 
-      this.logger.error('Service visible role assignment failed', {
+      this.logger.error('서비스-역할 할당 실패', {
         error: error instanceof Error ? error.message : 'Unknown error',
         serviceId: dto.serviceId,
         roleId: dto.roleId,
@@ -141,14 +141,14 @@ export class ServiceVisibleRoleService {
       const result = await this.svrRepo.delete({ serviceId, roleId });
 
       if (result.affected === 0) {
-        this.logger.warn('Service visible role not found for revocation', {
+        this.logger.warn('해제할 서비스-역할 관계를 찾을 수 없음', {
           serviceId,
           roleId,
         });
         throw ServiceVisibleRoleException.serviceVisibleRoleNotFound();
       }
 
-      this.logger.log('Service visible role revoked successfully', {
+      this.logger.log('서비스-역할 해제 성공', {
         serviceId,
         roleId,
       });
@@ -157,7 +157,7 @@ export class ServiceVisibleRoleService {
         throw error;
       }
 
-      this.logger.error('Service visible role revocation failed', {
+      this.logger.error('서비스-역할 해제 실패', {
         error: error instanceof Error ? error.message : 'Unknown error',
         serviceId,
         roleId,
@@ -170,34 +170,73 @@ export class ServiceVisibleRoleService {
   // ==================== 배치 처리 메서드 ====================
 
   /**
-   * 여러 역할을 서비스에 할당 (배치)
+   * 여러 역할을 서비스에 할당 (배치) - 개선된 로직
    */
-  async assignMultipleRoles(serviceId: string, roleIds: string[]): Promise<void> {
+  async assignMultipleRoles(dto: {
+    serviceId: string;
+    roleIds: string[];
+  }): Promise<ServiceVisibleRoleBatchAssignmentResult> {
     try {
-      const entities = roleIds.map((roleId) => {
+      // 1. 기존 할당 역할 조회
+      const existingRoles = await this.getRoleIds(dto.serviceId);
+      const newRoles = dto.roleIds.filter((id) => !existingRoles.includes(id));
+      const duplicates = dto.roleIds.filter((id) => existingRoles.includes(id));
+
+      if (newRoles.length === 0) {
+        this.logger.warn('새로운 역할 할당 없음 - 모든 역할이 이미 존재', {
+          serviceId: dto.serviceId,
+          requestedCount: dto.roleIds.length,
+          duplicateCount: duplicates.length,
+        });
+
+        return {
+          success: true,
+          affected: 0,
+          details: {
+            assigned: 0,
+            skipped: duplicates.length,
+            duplicates,
+            newAssignments: [],
+            serviceId: dto.serviceId,
+            assignedRoles: [],
+          },
+        };
+      }
+
+      // 2. 새로운 역할만 할당
+      const entities = newRoles.map((roleId) => {
         const entity = new ServiceVisibleRoleEntity();
-        entity.serviceId = serviceId;
+        entity.serviceId = dto.serviceId;
         entity.roleId = roleId;
         return entity;
       });
 
-      await this.svrRepo
-        .createQueryBuilder()
-        .insert()
-        .into(ServiceVisibleRoleEntity)
-        .values(entities)
-        .orIgnore()
-        .execute();
+      await this.svrRepo.save(entities);
 
-      this.logger.log('Multiple service visible roles assigned successfully', {
-        serviceId,
-        roleCount: roleIds.length,
+      this.logger.log('서비스 다중 역할 할당 성공', {
+        serviceId: dto.serviceId,
+        assignedCount: newRoles.length,
+        skippedCount: duplicates.length,
+        totalRequested: dto.roleIds.length,
       });
+
+      return {
+        success: true,
+        affected: newRoles.length,
+        details: {
+          assigned: newRoles.length,
+          skipped: duplicates.length,
+          duplicates,
+          newAssignments: newRoles,
+          serviceId: dto.serviceId,
+          assignedRoles: newRoles,
+        },
+      };
     } catch (error: unknown) {
-      this.logger.error('Multiple service visible roles assignment failed', {
+      this.logger.error('서비스 다중 역할 할당 실패', {
         error: error instanceof Error ? error.message : 'Unknown error',
-        serviceId,
-        roleCount: roleIds.length,
+        serviceId: dto.serviceId,
+        roleCount: dto.roleIds.length,
       });
 
       throw ServiceVisibleRoleException.assignMultipleError();
@@ -207,25 +246,22 @@ export class ServiceVisibleRoleService {
   /**
    * 서비스에서 여러 역할 해제 (배치)
    */
-  async revokeMultipleRoles(serviceId: string, roleIds: string[]): Promise<void> {
+  async revokeMultipleRoles(dto: { serviceId: string; roleIds: string[] }): Promise<void> {
     try {
-      const result = await this.svrRepo
-        .createQueryBuilder()
-        .delete()
-        .from(ServiceVisibleRoleEntity)
-        .where('serviceId = :serviceId AND roleId IN (:...roleIds)', { serviceId, roleIds })
-        .execute();
+      await this.svrRepo.delete({
+        serviceId: dto.serviceId,
+        roleId: In(dto.roleIds),
+      });
 
-      this.logger.log('Multiple service visible roles revoked successfully', {
-        serviceId,
-        roleCount: roleIds.length,
-        affectedRows: result.affected || 0,
+      this.logger.log('서비스 다중 역할 해제 성공', {
+        serviceId: dto.serviceId,
+        roleCount: dto.roleIds.length,
       });
     } catch (error: unknown) {
-      this.logger.error('Multiple service visible roles revocation failed', {
+      this.logger.error('서비스 다중 역할 해제 실패', {
         error: error instanceof Error ? error.message : 'Unknown error',
-        serviceId,
-        roleCount: roleIds.length,
+        serviceId: dto.serviceId,
+        roleCount: dto.roleIds.length,
       });
 
       throw ServiceVisibleRoleException.revokeMultipleError();
@@ -252,12 +288,12 @@ export class ServiceVisibleRoleService {
         }
       });
 
-      this.logger.log('Service roles replaced successfully', {
+      this.logger.log('서비스 역할 교체 성공', {
         serviceId: dto.serviceId,
         newRoleCount: dto.roleIds.length,
       });
     } catch (error: unknown) {
-      this.logger.error('Service roles replacement failed', {
+      this.logger.error('서비스 역할 교체 실패', {
         error: error instanceof Error ? error.message : 'Unknown error',
         serviceId: dto.serviceId,
         newRoleCount: dto.roleIds.length,
@@ -267,4 +303,22 @@ export class ServiceVisibleRoleService {
     }
   }
 
+  // ==================== 성능 최적화 메서드 (Service 중심) ====================
+
+  /**
+   * 🔥 SECONDARY: 역할에 할당된 서비스 존재 확인 (Role 삭제 시 사용)
+   */
+  async hasServicesForRole(roleId: string): Promise<boolean> {
+    try {
+      const serviceIds = await this.svrRepo.findServiceIdsByRoleId(roleId);
+      return serviceIds.length > 0;
+    } catch (error: unknown) {
+      this.logger.error('역할의 서비스 존재 확인 실패', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        roleId,
+      });
+      throw ServiceVisibleRoleException.fetchError();
+    }
+  }
 }
+
