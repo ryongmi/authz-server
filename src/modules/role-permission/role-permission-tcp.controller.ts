@@ -2,11 +2,11 @@ import { Controller, Logger } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 
 import { TcpOperationResponse } from '@krgeobuk/core/interfaces';
-import type { TcpRoleParams } from '@krgeobuk/role/tcp/interfaces';
-import type { TcpPermissionParams } from '@krgeobuk/permission/tcp/interfaces';
+import type { TcpRoleId } from '@krgeobuk/role/tcp/interfaces';
+import type { TcpPermissionId } from '@krgeobuk/permission/tcp/interfaces';
 import {
   RolePermissionTcpPatterns,
-  type TcpRolePermissionParams,
+  type TcpRolePermission,
   type TcpRolePermissionBatch,
 } from '@krgeobuk/role-permission/tcp';
 
@@ -19,7 +19,7 @@ export class RolePermissionTcpController {
   constructor(private readonly rolePermissionService: RolePermissionService) {}
 
   @MessagePattern(RolePermissionTcpPatterns.FIND_PERMISSIONS_BY_ROLE)
-  async findPermissionIdsByRoleId(@Payload() data: TcpRoleParams): Promise<string[]> {
+  async findPermissionIdsByRoleId(@Payload() data: TcpRoleId): Promise<string[]> {
     try {
       this.logger.debug('TCP role-permission find permissions by role requested', {
         roleId: data.roleId,
@@ -35,7 +35,7 @@ export class RolePermissionTcpController {
   }
 
   @MessagePattern(RolePermissionTcpPatterns.FIND_ROLES_BY_PERMISSION)
-  async findRoleIdsByPermissionId(@Payload() data: TcpPermissionParams): Promise<string[]> {
+  async findRoleIdsByPermissionId(@Payload() data: TcpPermissionId): Promise<string[]> {
     try {
       this.logger.debug('TCP role-permission find roles by permission requested', {
         permissionId: data.permissionId,
@@ -51,7 +51,7 @@ export class RolePermissionTcpController {
   }
 
   @MessagePattern(RolePermissionTcpPatterns.EXISTS)
-  async checkRolePermissionExists(@Payload() data: TcpRolePermissionParams): Promise<boolean> {
+  async checkRolePermissionExists(@Payload() data: TcpRolePermission): Promise<boolean> {
     try {
       this.logger.debug('TCP role-permission exists check requested', {
         roleId: data.roleId,

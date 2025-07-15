@@ -32,7 +32,6 @@ import { RolePermissionResponse } from '@krgeobuk/role-permission/response';
 
 import { RolePermissionService } from './role-permission.service.js';
 
-// 중간테이블 특성에 맞는 RESTful API 설계
 @SwaggerApiTags({ tags: ['role-permissions'] })
 @SwaggerApiBearerAuth()
 @UseGuards(AccessTokenGuard, AuthorizationGuard)
@@ -163,8 +162,8 @@ export class RolePermissionController {
     description: RolePermissionError.ASSIGN_ERROR.message,
   })
   @SwaggerApiErrorResponse({
-    status: RolePermissionError.ALREADY_EXISTS.statusCode,
-    description: RolePermissionError.ALREADY_EXISTS.message,
+    status: RolePermissionError.ROLE_PERMISSION_ALREADY_EXISTS.statusCode,
+    description: RolePermissionError.ROLE_PERMISSION_ALREADY_EXISTS.message,
   })
   @RequireRole('super-admin')
   @Serialize({
