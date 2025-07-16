@@ -133,7 +133,7 @@ export class ServiceVisibleRoleController {
   async checkServiceVisibleRoleExists(
     @Param() params: ServiceVisibleRoleParamsDto
   ): Promise<boolean> {
-    return this.svrService.exists(params.serviceId, params.roleId);
+    return this.svrService.exists(params);
   }
 
   // ==================== 변경 API ====================
@@ -173,10 +173,7 @@ export class ServiceVisibleRoleController {
     ...ServiceVisibleRoleResponse.ASSIGN_SUCCESS,
   })
   async assignServiceVisibleRole(@Param() params: ServiceVisibleRoleParamsDto): Promise<void> {
-    await this.svrService.assignServiceVisibleRole({
-      serviceId: params.serviceId,
-      roleId: params.roleId,
-    });
+    await this.svrService.assignServiceVisibleRole(params);
   }
 
   @Delete('services/:serviceId/roles/:roleId')
@@ -214,7 +211,7 @@ export class ServiceVisibleRoleController {
     ...ServiceVisibleRoleResponse.REVOKE_SUCCESS,
   })
   async revokeServiceVisibleRole(@Param() params: ServiceVisibleRoleParamsDto): Promise<void> {
-    await this.svrService.revokeServiceVisibleRole(params.serviceId, params.roleId);
+    await this.svrService.revokeServiceVisibleRole(params);
   }
 
   // ==================== 배치 처리 API ====================

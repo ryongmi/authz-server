@@ -4,6 +4,8 @@ import { In } from 'typeorm';
 
 import { UserRoleException } from '@krgeobuk/user-role/exception';
 import type { UserRoleBatchAssignmentResult } from '@krgeobuk/user-role/interfaces';
+import type { TcpUserRoleBatch } from '@krgeobuk/user-role/tcp';
+import type { UserRoleParams } from '@krgeobuk/shared/user-role';
 
 import { UserRoleEntity } from './entities/user-role.entity.js';
 import { UserRoleRepository } from './user-role.repository.js';
@@ -49,7 +51,9 @@ export class UserRoleService {
   /**
    * 사용자-역할 관계 존재 확인
    */
-  async exists(userId: string, roleId: string): Promise<boolean> {
+  async exists(parmas: UserRoleParams): Promise<boolean> {
+    const { userId, roleId } = parmas;
+
     try {
       return await this.userRoleRepo.existsUserRole(userId, roleId);
     } catch (error: unknown) {
@@ -120,11 +124,12 @@ export class UserRoleService {
   /**
    * 단일 사용자-역할 할당
    */
-  async assignUserRole(dto: { userId: string; roleId: string }): Promise<void> {
-    const { userId, roleId } = dto;
+  async assignUserRole(parmas: UserRoleParams): Promise<void> {
+    const { userId, roleId } = parmas;
+
     try {
       // 중복 확인
-      const exists = await this.exists(userId, roleId);
+      const exists = await this.exists({ userId, roleId });
       if (exists) {
         this.logger.warn('User role already assigned', {
           userId,
@@ -160,7 +165,9 @@ export class UserRoleService {
   /**
    * 단일 사용자-역할 해제
    */
-  async revokeUserRole(userId: string, roleId: string): Promise<void> {
+  async revokeUserRole(parmas: UserRoleParams): Promise<void> {
+    const { userId, roleId } = parmas;
+
     try {
       const result = await this.userRoleRepo.delete({ userId, roleId });
 
@@ -194,20 +201,19 @@ export class UserRoleService {
   /**
    * 여러 역할 할당 (배치) - 개선된 로직
    */
-  async assignMultipleRoles(dto: {
-    userId: string;
-    roleIds: string[];
-  }): Promise<UserRoleBatchAssignmentResult> {
+  async assignMultipleRoles(dto: TcpUserRoleBatch): Promise<UserRoleBatchAssignmentResult> {
+    const { userId, roleIds } = dto;
+
     try {
       // 1. 기존 할당 역할 조회
       const existingRoles = await this.getRoleIds(dto.userId);
-      const newRoles = dto.roleIds.filter((id) => !existingRoles.includes(id));
-      const duplicates = dto.roleIds.filter((id) => existingRoles.includes(id));
+      const newRoles = roleIds.filter((id) => !existingRoles.includes(id));
+      const duplicates = roleIds.filter((id) => existingRoles.includes(id));
 
       if (newRoles.length === 0) {
         this.logger.warn('No new roles to assign - all already exist', {
-          userId: dto.userId,
-          requestedCount: dto.roleIds.length,
+          userId,
+          requestedCount: roleIds.length,
           duplicateCount: duplicates.length,
         });
 
@@ -219,7 +225,7 @@ export class UserRoleService {
             skipped: duplicates.length,
             duplicates,
             newAssignments: [],
-            userId: dto.userId,
+            userId: userId,
             assignedRoles: [],
           },
         };
@@ -228,7 +234,7 @@ export class UserRoleService {
       // 2. 새로운 역할만 할당
       const entities = newRoles.map((roleId) => {
         const entity = new UserRoleEntity();
-        entity.userId = dto.userId;
+        entity.userId = userId;
         entity.roleId = roleId;
         return entity;
       });
@@ -236,7 +242,7 @@ export class UserRoleService {
       await this.userRoleRepo.save(entities);
 
       this.logger.log('Multiple user roles assigned successfully', {
-        userId: dto.userId,
+        userId,
         assignedCount: newRoles.length,
         skippedCount: duplicates.length,
         totalRequested: dto.roleIds.length,
@@ -250,15 +256,15 @@ export class UserRoleService {
           skipped: duplicates.length,
           duplicates,
           newAssignments: newRoles,
-          userId: dto.userId,
+          userId,
           assignedRoles: newRoles,
         },
       };
     } catch (error: unknown) {
       this.logger.error('Multiple user roles assignment failed', {
         error: error instanceof Error ? error.message : 'Unknown error',
-        userId: dto.userId,
-        roleCount: dto.roleIds.length,
+        userId,
+        roleCount: roleIds.length,
       });
 
       throw UserRoleException.assignMultipleError();
@@ -268,22 +274,24 @@ export class UserRoleService {
   /**
    * 여러 역할 해제 (배치)
    */
-  async revokeMultipleRoles(dto: { userId: string; roleIds: string[] }): Promise<void> {
+  async revokeMultipleRoles(dto: TcpUserRoleBatch): Promise<void> {
+    const { userId, roleIds } = dto;
+
     try {
       await this.userRoleRepo.delete({
-        userId: dto.userId,
-        roleId: In(dto.roleIds),
+        userId,
+        roleId: In(roleIds),
       });
 
       this.logger.log('Multiple user roles revoked successfully', {
-        userId: dto.userId,
-        roleCount: dto.roleIds.length,
+        userId,
+        roleCount: roleIds.length,
       });
     } catch (error: unknown) {
       this.logger.error('Multiple user roles revocation failed', {
         error: error instanceof Error ? error.message : 'Unknown error',
-        userId: dto.userId,
-        roleCount: dto.roleIds.length,
+        userId,
+        roleCount: roleIds.length,
       });
 
       throw UserRoleException.revokeMultipleError();
@@ -293,17 +301,19 @@ export class UserRoleService {
   /**
    * 사용자 역할 완전 교체 (배치)
    */
-  async replaceUserRoles(dto: { userId: string; roleIds: string[] }): Promise<void> {
+  async replaceUserRoles(dto: TcpUserRoleBatch): Promise<void> {
+    const { userId, roleIds } = dto;
+
     try {
       await this.userRoleRepo.manager.transaction(async (manager) => {
         // 1. 기존 역할 모두 삭제
-        await manager.delete(UserRoleEntity, { userId: dto.userId });
+        await manager.delete(UserRoleEntity, { userId });
 
         // 2. 새로운 역할 배치 삽입
-        if (dto.roleIds.length > 0) {
-          const entities = dto.roleIds.map((roleId) => {
+        if (roleIds.length > 0) {
+          const entities = roleIds.map((roleId) => {
             const entity = new UserRoleEntity();
-            entity.userId = dto.userId;
+            entity.userId = userId;
             entity.roleId = roleId;
             return entity;
           });
@@ -313,14 +323,14 @@ export class UserRoleService {
       });
 
       this.logger.log('User roles replaced successfully', {
-        userId: dto.userId,
-        newRoleCount: dto.roleIds.length,
+        userId,
+        newRoleCount: roleIds.length,
       });
     } catch (error: unknown) {
       this.logger.error('User roles replacement failed', {
         error: error instanceof Error ? error.message : 'Unknown error',
-        userId: dto.userId,
-        newRoleCount: dto.roleIds.length,
+        userId,
+        newRoleCount: roleIds.length,
       });
 
       throw UserRoleException.replaceError();

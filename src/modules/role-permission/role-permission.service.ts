@@ -4,6 +4,8 @@ import { In } from 'typeorm';
 
 import { RolePermissionException } from '@krgeobuk/role-permission/exception';
 import type { RolePermissionBatchAssignmentResult } from '@krgeobuk/role-permission/interfaces';
+import type { RolePermissionParams } from '@krgeobuk/shared/role-permission';
+import type { TcpRolePermissionBatch } from '@krgeobuk/role-permission/tcp';
 
 import { RolePermissionEntity } from './entities/role-permission.entity.js';
 import { RolePermissionRepository } from './role-permission.repository.js';
@@ -40,6 +42,24 @@ export class RolePermissionService {
     } catch (error: unknown) {
       this.logger.error('권한별 역할 ID 조회 실패', {
         error: error instanceof Error ? error.message : 'Unknown error',
+        permissionId,
+      });
+      throw RolePermissionException.fetchError();
+    }
+  }
+
+  /**
+   * 역할-권한 관계 존재 확인
+   */
+  async exists(params: RolePermissionParams): Promise<boolean> {
+    const { roleId, permissionId } = params;
+
+    try {
+      return await this.rolePermissionRepo.existsRolePermission(roleId, permissionId);
+    } catch (error: unknown) {
+      this.logger.error('역할-권한 관계 존재 확인 실패', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        roleId,
         permissionId,
       });
       throw RolePermissionException.fetchError();
@@ -99,47 +119,33 @@ export class RolePermissionService {
     }
   }
 
-  /**
-   * 역할-권한 관계 존재 확인
-   */
-  async exists(roleId: string, permissionId: string): Promise<boolean> {
-    try {
-      return await this.rolePermissionRepo.existsRolePermission(roleId, permissionId);
-    } catch (error: unknown) {
-      this.logger.error('역할-권한 관계 존재 확인 실패', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        roleId,
-        permissionId,
-      });
-      throw RolePermissionException.fetchError();
-    }
-  }
-
   // ==================== 변경 메서드 ====================
 
   /**
    * 단일 역할-권한 할당
    */
-  async assignRolePermission(dto: { roleId: string; permissionId: string }): Promise<void> {
+  async assignRolePermission(params: RolePermissionParams): Promise<void> {
+    const { roleId, permissionId } = params;
+
     try {
       // 중복 확인
-      const exists = await this.exists(dto.roleId, dto.permissionId);
+      const exists = await this.exists({ roleId, permissionId });
       if (exists) {
         this.logger.warn('역할-권한 관계 이미 존재', {
-          roleId: dto.roleId,
-          permissionId: dto.permissionId,
+          roleId: roleId,
+          permissionId: permissionId,
         });
         throw RolePermissionException.rolePermissionAlreadyExists();
       }
 
       const entity = new RolePermissionEntity();
-      Object.assign(entity, dto);
+      Object.assign(entity, { roleId, permissionId });
 
       await this.rolePermissionRepo.save(entity);
 
       this.logger.log('역할-권한 할당 성공', {
-        roleId: dto.roleId,
-        permissionId: dto.permissionId,
+        roleId,
+        permissionId,
       });
     } catch (error: unknown) {
       if (error instanceof HttpException) {
@@ -148,8 +154,8 @@ export class RolePermissionService {
 
       this.logger.error('역할-권한 할당 실패', {
         error: error instanceof Error ? error.message : 'Unknown error',
-        roleId: dto.roleId,
-        permissionId: dto.permissionId,
+        roleId,
+        permissionId,
       });
 
       throw RolePermissionException.assignError();
@@ -159,7 +165,9 @@ export class RolePermissionService {
   /**
    * 단일 역할-권한 해제
    */
-  async revokeRolePermission(roleId: string, permissionId: string): Promise<void> {
+  async revokeRolePermission(params: RolePermissionParams): Promise<void> {
+    const { roleId, permissionId } = params;
+
     try {
       const result = await this.rolePermissionRepo.delete({ roleId, permissionId });
 
@@ -195,20 +203,21 @@ export class RolePermissionService {
   /**
    * 여러 권한 할당 (배치) - 개선된 로직
    */
-  async assignMultiplePermissions(dto: {
-    roleId: string;
-    permissionIds: string[];
-  }): Promise<RolePermissionBatchAssignmentResult> {
+  async assignMultiplePermissions(
+    dto: TcpRolePermissionBatch
+  ): Promise<RolePermissionBatchAssignmentResult> {
+    const { roleId, permissionIds } = dto;
+
     try {
       // 1. 기존 할당 권한 조회
-      const existingPermissions = await this.getPermissionIds(dto.roleId);
-      const newPermissions = dto.permissionIds.filter((id) => !existingPermissions.includes(id));
-      const duplicates = dto.permissionIds.filter((id) => existingPermissions.includes(id));
+      const existingPermissions = await this.getPermissionIds(roleId);
+      const newPermissions = permissionIds.filter((id) => !existingPermissions.includes(id));
+      const duplicates = permissionIds.filter((id) => existingPermissions.includes(id));
 
       if (newPermissions.length === 0) {
         this.logger.warn('새로운 권한 할당 없음 - 모든 권한이 이미 존재', {
-          roleId: dto.roleId,
-          requestedCount: dto.permissionIds.length,
+          roleId,
+          requestedCount: permissionIds.length,
           duplicateCount: duplicates.length,
         });
 
@@ -220,7 +229,7 @@ export class RolePermissionService {
             skipped: duplicates.length,
             duplicates,
             newAssignments: [],
-            roleId: dto.roleId,
+            roleId,
             assignedPermissions: [],
           },
         };
@@ -229,7 +238,7 @@ export class RolePermissionService {
       // 2. 새로운 권한만 할당
       const entities = newPermissions.map((permissionId) => {
         const entity = new RolePermissionEntity();
-        entity.roleId = dto.roleId;
+        entity.roleId = roleId;
         entity.permissionId = permissionId;
         return entity;
       });
@@ -237,10 +246,10 @@ export class RolePermissionService {
       await this.rolePermissionRepo.save(entities);
 
       this.logger.log('역할 다중 권한 할당 성공', {
-        roleId: dto.roleId,
+        roleId,
         assignedCount: newPermissions.length,
         skippedCount: duplicates.length,
-        totalRequested: dto.permissionIds.length,
+        totalRequested: permissionIds.length,
       });
 
       return {
@@ -251,15 +260,15 @@ export class RolePermissionService {
           skipped: duplicates.length,
           duplicates,
           newAssignments: newPermissions,
-          roleId: dto.roleId,
+          roleId,
           assignedPermissions: newPermissions,
         },
       };
     } catch (error: unknown) {
       this.logger.error('역할 다중 권한 할당 실패', {
         error: error instanceof Error ? error.message : 'Unknown error',
-        roleId: dto.roleId,
-        permissionCount: dto.permissionIds.length,
+        roleId,
+        permissionCount: permissionIds.length,
       });
 
       throw RolePermissionException.assignMultipleError();
@@ -269,22 +278,24 @@ export class RolePermissionService {
   /**
    * 여러 권한 해제 (배치)
    */
-  async revokeMultiplePermissions(dto: { roleId: string; permissionIds: string[] }): Promise<void> {
+  async revokeMultiplePermissions(dto: TcpRolePermissionBatch): Promise<void> {
+    const { roleId, permissionIds } = dto;
+
     try {
       await this.rolePermissionRepo.delete({
-        roleId: dto.roleId,
-        permissionId: In(dto.permissionIds),
+        roleId,
+        permissionId: In(permissionIds),
       });
 
       this.logger.log('역할 다중 권한 해제 성공', {
-        roleId: dto.roleId,
-        permissionCount: dto.permissionIds.length,
+        roleId,
+        permissionCount: permissionIds.length,
       });
     } catch (error: unknown) {
       this.logger.error('역할 다중 권한 해제 실패', {
         error: error instanceof Error ? error.message : 'Unknown error',
-        roleId: dto.roleId,
-        permissionCount: dto.permissionIds.length,
+        roleId,
+        permissionCount: permissionIds.length,
       });
 
       throw RolePermissionException.revokeMultipleError();
@@ -294,17 +305,19 @@ export class RolePermissionService {
   /**
    * 역할 권한 완전 교체 (배치)
    */
-  async replaceRolePermissions(dto: { roleId: string; permissionIds: string[] }): Promise<void> {
+  async replaceRolePermissions(dto: TcpRolePermissionBatch): Promise<void> {
+    const { roleId, permissionIds } = dto;
+
     try {
       await this.rolePermissionRepo.manager.transaction(async (manager) => {
         // 1. 기존 권한 모두 삭제
-        await manager.delete(RolePermissionEntity, { roleId: dto.roleId });
+        await manager.delete(RolePermissionEntity, { roleId });
 
         // 2. 새로운 권한 배치 삽입
-        if (dto.permissionIds.length > 0) {
-          const entities = dto.permissionIds.map((permissionId) => {
+        if (permissionIds.length > 0) {
+          const entities = permissionIds.map((permissionId) => {
             const entity = new RolePermissionEntity();
-            entity.roleId = dto.roleId;
+            entity.roleId = roleId;
             entity.permissionId = permissionId;
             return entity;
           });
@@ -314,14 +327,14 @@ export class RolePermissionService {
       });
 
       this.logger.log('역할 권한 교체 성공', {
-        roleId: dto.roleId,
-        newPermissionCount: dto.permissionIds.length,
+        roleId,
+        newPermissionCount: permissionIds.length,
       });
     } catch (error: unknown) {
       this.logger.error('역할 권한 교체 실패', {
         error: error instanceof Error ? error.message : 'Unknown error',
-        roleId: dto.roleId,
-        newPermissionCount: dto.permissionIds.length,
+        roleId,
+        newPermissionCount: permissionIds.length,
       });
 
       throw RolePermissionException.replaceError();

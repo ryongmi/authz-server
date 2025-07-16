@@ -130,7 +130,7 @@ export class RolePermissionController {
     ...RolePermissionResponse.FETCH_SUCCESS,
   })
   async checkRolePermissionExists(@Param() params: RolePermissionParamsDto): Promise<boolean> {
-    return this.rolePermissionService.exists(params.roleId, params.permissionId);
+    return this.rolePermissionService.exists(params);
   }
 
   // ==================== 변경 API ====================
@@ -205,7 +205,7 @@ export class RolePermissionController {
   })
   @RequireRole('super-admin')
   async revokeRolePermission(@Param() params: RolePermissionParamsDto): Promise<void> {
-    await this.rolePermissionService.revokeRolePermission(params.roleId, params.permissionId);
+    await this.rolePermissionService.revokeRolePermission(params);
   }
 
   // ==================== 배치 처리 API ====================

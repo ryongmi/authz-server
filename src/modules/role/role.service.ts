@@ -16,8 +16,10 @@ import type {
   CreateRole,
   UpdateRole,
 } from '@krgeobuk/role/interfaces';
+import { ServiceTcpPatterns } '@krgeobuk/service/tcp/patterns';
+import { UserTcpPatterns } '@krgeobuk/user/tcp/patterns';
 
-// UserRoleService는 실제 구현에 따라 필요할 수 있음
+
 import { UserRoleService } from '@modules/user-role/index.js';
 
 import { RoleEntity } from './entities/role.entity.js';
@@ -98,6 +100,42 @@ export class RoleService {
     return this.roleRepo.find({ where });
   }
 
+  async searchRoles(query: RoleSearchQuery): Promise<PaginatedResult<RoleSearchResult>> {
+    const roles = await this.roleRepo.searchRoles(query);
+
+    if (roles.items.length === 0) {
+      return { items: [], pageInfo: roles.pageInfo };
+    }
+
+    const roleIds = roles.items.map((role) => role.id!);
+
+    try {
+      const [userCounts, services] = await Promise.all([
+        this.getUserCountByRoleIds(roleIds),
+        this.getServicesByQuery(query, roles.items),
+      ]);
+
+      const items = this.buildRoleSearchResults(roles.items, userCounts, services);
+
+      return {
+        items,
+        pageInfo: roles.pageInfo,
+      };
+    } catch (error: unknown) {
+      this.logger.warn('TCP 서비스 통신 실패, 대체 데이터 사용', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        serviceId: query.serviceId,
+        roleCount: roles.items.length,
+      });
+
+      const items = this.buildFallbackRoleSearchResults(roles.items);
+      return {
+        items,
+        pageInfo: roles.pageInfo,
+      };
+    }
+  }
+
   async getRoleById(roleId: string): Promise<RoleDetail> {
     const role = await this.findByIdOrFail(roleId);
 
@@ -129,42 +167,6 @@ export class RoleService {
         priority: role.priority!,
         service: { id: '', name: 'Service unavailable' },
         users: [],
-      };
-    }
-  }
-
-  async searchRoles(query: RoleSearchQuery): Promise<PaginatedResult<RoleSearchResult>> {
-    const roles = await this.roleRepo.searchRoles(query);
-
-    if (roles.items.length === 0) {
-      return { items: [], pageInfo: roles.pageInfo };
-    }
-
-    const roleIds = roles.items.map((role) => role.id!);
-
-    try {
-      const [userCounts, services] = await Promise.all([
-        this.getUserRolesByRoleIds(roleIds),
-        this.getServicesByQuery(query, roles.items),
-      ]);
-
-      const items = this.buildRoleSearchResults(roles.items, userCounts, services);
-
-      return {
-        items,
-        pageInfo: roles.pageInfo,
-      };
-    } catch (error: unknown) {
-      this.logger.warn('TCP 서비스 통신 실패, 대체 데이터 사용', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        serviceId: query.serviceId,
-        roleCount: roles.items.length,
-      });
-
-      const items = this.buildFallbackRoleSearchResults(roles.items);
-      return {
-        items,
-        pageInfo: roles.pageInfo,
       };
     }
   }
@@ -306,8 +308,8 @@ export class RoleService {
 
   // ==================== PRIVATE HELPER METHODS ====================
 
-  private async getUserRolesByRoleIds(roleIds: string[]): Promise<Map<string, number>> {
-    return this.userRoleService.getRoleCountsBatch(roleIds);
+  private async getUserCountByRoleIds(roleIds: string[]): Promise<Map<string, number>> {
+    return await this.userRoleService.getRoleCountsBatch(roleIds);
   }
 
   private async getServicesByQuery(
@@ -317,7 +319,9 @@ export class RoleService {
     const hasServiceIdFilter = !!query.serviceId;
     const serviceIds = query.serviceId ?? roles.map((role) => role.serviceId!);
 
-    const serviceMsgPattern = hasServiceIdFilter ? 'service.findById' : 'service.findByIds';
+    const serviceMsgPattern = hasServiceIdFilter
+      ? ServiceTcpPatterns.FIND_BY_ID
+      : ServiceTcpPatterns.FIND_BY_IDS;
     const serviceMsgPayload = hasServiceIdFilter ? { serviceId: serviceIds } : { serviceIds };
 
     try {
@@ -380,7 +384,7 @@ export class RoleService {
   private async getServiceById(serviceId: string): Promise<Service> {
     try {
       return await firstValueFrom(
-        this.portalClient.send<Service>('service.findById', { serviceId })
+        this.portalClient.send<Service>(ServiceTcpPatterns.FIND_BY_ID, { serviceId })
       );
     } catch (error: unknown) {
       this.logger.warn('포털 서비스에서 서비스 정보 조회 실패, 대체 데이터 사용', {
@@ -401,7 +405,9 @@ export class RoleService {
     }
 
     try {
-      return await firstValueFrom(this.authClient.send<User[]>('user.findByIds', { userIds }));
+      return await firstValueFrom(
+        this.authClient.send<User[]>(UserTcpPatterns.FIND_BY_IDS, { userIds })
+      );
     } catch (error: unknown) {
       this.logger.warn('인증 서비스에서 사용자 정보 조회 실패, 대체 데이터 사용', {
         error: error instanceof Error ? error.message : 'Unknown error',

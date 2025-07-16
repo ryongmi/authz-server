@@ -130,7 +130,7 @@ export class UserRoleController {
     ...UserRoleResponse.FETCH_SUCCESS,
   })
   async checkUserRoleExists(@Param() params: UserRoleParamsDto): Promise<boolean> {
-    return this.userRoleService.exists(params.userId, params.roleId);
+    return this.userRoleService.exists(params);
   }
 
   // ==================== 변경 API ====================
@@ -170,10 +170,7 @@ export class UserRoleController {
     ...UserRoleResponse.ASSIGN_SUCCESS,
   })
   async assignUserRole(@Param() params: UserRoleParamsDto): Promise<void> {
-    await this.userRoleService.assignUserRole({
-      userId: params.userId,
-      roleId: params.roleId,
-    });
+    await this.userRoleService.assignUserRole(params);
   }
 
   @Delete('users/:userId/roles/:roleId')
@@ -208,7 +205,7 @@ export class UserRoleController {
   })
   @RequireRole('super-admin')
   async revokeUserRole(@Param() params: UserRoleParamsDto): Promise<void> {
-    await this.userRoleService.revokeUserRole(params.userId, params.roleId);
+    await this.userRoleService.revokeUserRole(params);
   }
 
   // ==================== 배치 처리 API ====================

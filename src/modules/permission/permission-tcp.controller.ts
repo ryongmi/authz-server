@@ -14,6 +14,7 @@ import type {
   TcpPermissionUpdate,
 } from '@krgeobuk/permission/tcp/interfaces';
 import { PermissionTcpPatterns } from '@krgeobuk/permission/tcp/patterns';
+import { Permission } from '@krgeobuk/shared/permission';
 
 import { PermissionEntity } from './entities/permission.entity.js';
 import { PermissionService } from './permission.service.js';
@@ -58,6 +59,46 @@ export class PermissionTcpController {
   }
 
   /**
+   * 권한 ID로 상세 정보 조회
+   */
+  @MessagePattern(PermissionTcpPatterns.FIND_BY_ID)
+  async findPermissionById(@Payload() data: TcpPermissionId): Promise<PermissionDetail | null> {
+    this.logger.debug(`TCP permission detail request: ${data.permissionId}`);
+
+    try {
+      const permission = await this.permissionService.getPermissionById(data.permissionId);
+      this.logger.debug(`TCP permission detail response: ${permission.action}`);
+      return permission;
+    } catch (error: unknown) {
+      this.logger.debug('TCP permission not found or error occurred', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        permissionId: data.permissionId,
+      });
+      return null;
+    }
+  }
+
+  /**
+   * 여러 역할 ID로 역할 상세 정보 목록 검색
+   */
+  @MessagePattern(PermissionTcpPatterns.FIND_BY_IDS)
+  async findPermissionsByIds(@Payload() data: { permissionIds: string[] }): Promise<Permission[]> {
+    this.logger.debug(`TCP permission findByIds request: ${data.permissionIds.length}`);
+
+    try {
+      const permissions = await this.permissionService.findByIds(data.permissionIds);
+      this.logger.debug(`TCP permission findByIds response: ${permissions.length || 'not found'}`);
+      return permissions;
+    } catch (error: unknown) {
+      this.logger.error('TCP permission findByIds failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        permissionCount: data.permissionIds.length,
+      });
+      throw error;
+    }
+  }
+
+  /**
    * 새로운 권한 생성
    */
   @MessagePattern(PermissionTcpPatterns.CREATE)
@@ -78,26 +119,6 @@ export class PermissionTcpController {
         serviceId: data.serviceId,
       });
       throw error;
-    }
-  }
-
-  /**
-   * 권한 ID로 상세 정보 조회
-   */
-  @MessagePattern(PermissionTcpPatterns.FIND_BY_ID)
-  async findPermissionById(@Payload() data: TcpPermissionId): Promise<PermissionDetail | null> {
-    this.logger.debug(`TCP permission detail request: ${data.permissionId}`);
-
-    try {
-      const permission = await this.permissionService.getPermissionById(data.permissionId);
-      this.logger.debug(`TCP permission detail response: ${permission.action}`);
-      return permission;
-    } catch (error: unknown) {
-      this.logger.debug('TCP permission not found or error occurred', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        permissionId: data.permissionId,
-      });
-      return null;
     }
   }
 
@@ -169,7 +190,7 @@ export class PermissionTcpController {
    * 권한 존재 여부 확인
    */
   @MessagePattern(PermissionTcpPatterns.EXISTS)
-  async checkPermissionExists(@Payload() data: TcpPermissionId): Promise<boolean> {
+  async existsPermission(@Payload() data: TcpPermissionId): Promise<boolean> {
     this.logger.debug(`TCP permission existence check: ${data.permissionId}`);
 
     try {

@@ -4,11 +4,11 @@ import { MessagePattern, Payload } from '@nestjs/microservices';
 import { TcpOperationResponse } from '@krgeobuk/core/interfaces';
 import type { TcpServiceId } from '@krgeobuk/service/tcp';
 import type { TcpRoleId } from '@krgeobuk/role/tcp/interfaces';
-import {
-  ServiceVisibleRoleTcpPatterns,
-  type TcpServiceVisibleRole,
-  type TcpServiceRoleBatch,
-} from '@krgeobuk/service-visible-role/tcp';
+import type {
+  TcpServiceVisibleRole,
+  TcpServiceRoleBatch,
+} from '@krgeobuk/service-visible-role/tcp/interfaces';
+import { ServiceVisibleRoleTcpPatterns } from '@krgeobuk/service-visible-role/tcp/patterns';
 
 import { ServiceVisibleRoleService } from './service-visible-role.service.js';
 
@@ -55,13 +55,13 @@ export class ServiceVisibleRoleTcpController {
   // ==================== 존재 확인 ====================
 
   @MessagePattern(ServiceVisibleRoleTcpPatterns.EXISTS)
-  async checkServiceVisibleRoleExists(@Payload() data: TcpServiceVisibleRole): Promise<boolean> {
+  async existsServiceVisibleRole(@Payload() data: TcpServiceVisibleRole): Promise<boolean> {
     try {
       this.logger.debug('TCP service-visible-role exists check requested', {
         serviceId: data.serviceId,
         roleId: data.roleId,
       });
-      return await this.svrService.exists(data.serviceId, data.roleId);
+      return await this.svrService.exists(data);
     } catch (error: unknown) {
       this.logger.error('TCP service-visible-role exists check failed', {
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -81,10 +81,7 @@ export class ServiceVisibleRoleTcpController {
         serviceId: data.serviceId,
         roleCount: data.roleIds.length,
       });
-      await this.svrService.assignMultipleRoles({
-        serviceId: data.serviceId,
-        roleIds: data.roleIds,
-      });
+      await this.svrService.assignMultipleRoles(data);
       return { success: true };
     } catch (error: unknown) {
       this.logger.error('TCP service-visible-role assign multiple roles failed', {
@@ -103,10 +100,7 @@ export class ServiceVisibleRoleTcpController {
         serviceId: data.serviceId,
         roleCount: data.roleIds.length,
       });
-      await this.svrService.revokeMultipleRoles({
-        serviceId: data.serviceId,
-        roleIds: data.roleIds,
-      });
+      await this.svrService.revokeMultipleRoles(data);
       return { success: true };
     } catch (error: unknown) {
       this.logger.error('TCP service-visible-role revoke multiple roles failed', {

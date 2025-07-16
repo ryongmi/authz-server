@@ -16,6 +16,7 @@ import type {
   CreatePermission,
   UpdatePermission,
 } from '@krgeobuk/permission/interfaces';
+import { ServiceTcpPatterns } '@krgeobuk/service/tcp/patterns';
 
 import { RolePermissionService } from '@modules/role-permission/index.js';
 import { RoleService } from '@modules/role/index.js';
@@ -49,6 +50,15 @@ export class PermissionService {
     }
 
     return permission;
+  }
+
+  async findByIds(permissionIds: string[]): Promise<PermissionEntity[]> {
+    if (permissionIds.length === 0) return [];
+
+    return this.permissionRepo.find({
+      where: { id: In(permissionIds) },
+      order: { action: 'DESC' },
+    });
   }
 
   async findByServiceIds(serviceIds: string[]): Promise<PermissionEntity[]> {
@@ -315,7 +325,7 @@ export class PermissionService {
     const hasServiceIdFilter = !!query.serviceId;
     const serviceIds = query.serviceId ?? permissions.map((permission) => permission.serviceId!);
 
-    const serviceMsgPattern = hasServiceIdFilter ? 'service.findById' : 'service.findByIds';
+    const serviceMsgPattern = hasServiceIdFilter ? ServiceTcpPatterns.FIND_BY_ID : ServiceTcpPatterns.FIND_BY_IDS;
     const serviceMsgPayload = hasServiceIdFilter ? { serviceId: serviceIds } : { serviceIds };
 
     try {
@@ -379,9 +389,9 @@ export class PermissionService {
   }
 
   private async getServiceById(serviceId: string): Promise<Service> {
-    try {
+    try {      
       return await firstValueFrom(
-        this.portalClient.send<Service>('service.findById', { serviceId })
+        this.portalClient.send<Service>(ServiceTcpPatterns.FIND_BY_ID, { serviceId })
       );
     } catch (error: unknown) {
       this.logger.warn('Failed to fetch service from portal service, using fallback', {
@@ -402,7 +412,7 @@ export class PermissionService {
     }
 
     // 최적화: 배치 처리로 N+1 쿼리 해결
-    const roles = await this.roleService.findByServiceIds(roleIds);
+    const roles = await this.roleService.findByIds(roleIds);
 
     // RoleEntity를 Role 인터페이스 형태로 변환
     return roles.map((role) => ({

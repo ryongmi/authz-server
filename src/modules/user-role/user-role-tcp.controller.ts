@@ -4,11 +4,8 @@ import { MessagePattern, Payload } from '@nestjs/microservices';
 import { TcpOperationResponse } from '@krgeobuk/core/interfaces';
 import type { TcpUserId } from '@krgeobuk/user/tcp/interfaces';
 import type { TcpRoleId } from '@krgeobuk/role/tcp/interfaces';
-import {
-  UserRoleTcpPatterns,
-  type TcpUserRole,
-  type TcpUserRoleBatch,
-} from '@krgeobuk/user-role/tcp';
+import type { TcpUserRole, TcpUserRoleBatch } from '@krgeobuk/user-role/tcp/interfaces';
+import { UserRoleTcpPatterns } from '@krgeobuk/user-role/tcp/patterns';
 
 import { UserRoleService } from './user-role.service.js';
 
@@ -57,7 +54,7 @@ export class UserRoleTcpController {
         userId: data.userId,
         roleId: data.roleId,
       });
-      return await this.userRoleService.exists(data.userId, data.roleId);
+      return await this.userRoleService.exists(data);
     } catch (error: unknown) {
       this.logger.error('TCP user-role exists check failed', {
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -75,10 +72,7 @@ export class UserRoleTcpController {
         userId: data.userId,
         roleCount: data.roleIds.length,
       });
-      await this.userRoleService.assignMultipleRoles({
-        userId: data.userId,
-        roleIds: data.roleIds,
-      });
+      await this.userRoleService.assignMultipleRoles(data);
       return { success: true };
     } catch (error: unknown) {
       this.logger.error('TCP user-role assign multiple failed', {
@@ -97,10 +91,7 @@ export class UserRoleTcpController {
         userId: data.userId,
         roleCount: data.roleIds.length,
       });
-      await this.userRoleService.revokeMultipleRoles({
-        userId: data.userId,
-        roleIds: data.roleIds,
-      });
+      await this.userRoleService.revokeMultipleRoles(data);
       return { success: true };
     } catch (error: unknown) {
       this.logger.error('TCP user-role revoke multiple failed', {

@@ -4,11 +4,11 @@ import { MessagePattern, Payload } from '@nestjs/microservices';
 import { TcpOperationResponse } from '@krgeobuk/core/interfaces';
 import type { TcpRoleId } from '@krgeobuk/role/tcp/interfaces';
 import type { TcpPermissionId } from '@krgeobuk/permission/tcp/interfaces';
-import {
-  RolePermissionTcpPatterns,
-  type TcpRolePermission,
-  type TcpRolePermissionBatch,
-} from '@krgeobuk/role-permission/tcp';
+import type {
+  TcpRolePermission,
+  TcpRolePermissionBatch,
+} from '@krgeobuk/role-permission/tcp/interfaces';
+import { RolePermissionTcpPatterns } from '@krgeobuk/role-permission/tcp/patterns';
 
 import { RolePermissionService } from './role-permission.service.js';
 
@@ -51,13 +51,13 @@ export class RolePermissionTcpController {
   }
 
   @MessagePattern(RolePermissionTcpPatterns.EXISTS)
-  async checkRolePermissionExists(@Payload() data: TcpRolePermission): Promise<boolean> {
+  async existsRolePermission(@Payload() data: TcpRolePermission): Promise<boolean> {
     try {
       this.logger.debug('TCP role-permission exists check requested', {
         roleId: data.roleId,
         permissionId: data.permissionId,
       });
-      return await this.rolePermissionService.exists(data.roleId, data.permissionId);
+      return await this.rolePermissionService.exists(data);
     } catch (error: unknown) {
       this.logger.error('TCP role-permission exists check failed', {
         error: error instanceof Error ? error.message : 'Unknown error',
