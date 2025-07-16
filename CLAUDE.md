@@ -71,21 +71,22 @@ export class PermissionService {
   // ==================== PUBLIC METHODS ====================
   
   // 기본 조회 메서드들
-  async findById(id: string): Promise<Entity | null> { }
-  async findByIdOrFail(id: string): Promise<Entity> { }
+  async findById(permissionId: string): Promise<Entity | null> { }
+  async findByIdOrFail(permissionId: string): Promise<Entity> { }
+  async findByIds(permissionIds: string): Promise<Entity[]> { }
   async findByServiceIds(serviceIds: string[]): Promise<Entity[]> { }
   async findByAnd(filter: Filter): Promise<Entity[]> { }
   async findByOr(filter: Filter): Promise<Entity[]> { }
   
   // 복합 조회 메서드들
   async searchPermissions(query: SearchQueryDto): Promise<PaginatedResult<SearchResult>> { }
-  async getPermissionById(id: string): Promise<DetailResult> { }
+  async getPermissionById(permissionId: string): Promise<DetailResult> { }
   
   // ==================== 변경 메서드 ====================
   
   async createPermission(dto: CreateDto, transactionManager?: EntityManager): Promise<void> { }
-  async updatePermission(id: string, dto: UpdateDto, transactionManager?: EntityManager): Promise<void> { }
-  async deletePermission(id: string): Promise<UpdateResult> { }
+  async updatePermission(permissionId: string, dto: UpdateDto, transactionManager?: EntityManager): Promise<void> { }
+  async deletePermission(permissionId: string): Promise<UpdateResult> { }
   
   // ==================== PRIVATE HELPER METHODS ====================
   
