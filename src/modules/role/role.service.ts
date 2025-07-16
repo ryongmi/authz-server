@@ -16,9 +16,8 @@ import type {
   CreateRole,
   UpdateRole,
 } from '@krgeobuk/role/interfaces';
-import { ServiceTcpPatterns } '@krgeobuk/service/tcp/patterns';
-import { UserTcpPatterns } '@krgeobuk/user/tcp/patterns';
-
+import { ServiceTcpPatterns } from '@krgeobuk/service/tcp';
+import { UserTcpPatterns } from '@krgeobuk/user/tcp';
 
 import { UserRoleService } from '@modules/user-role/index.js';
 
@@ -289,6 +288,8 @@ export class RoleService {
       this.logger.log('역할 삭제 성공', {
         roleId,
         roleName: role.name,
+        serviceId: role.serviceId,
+        deletionType: 'soft',
       });
 
       return result;

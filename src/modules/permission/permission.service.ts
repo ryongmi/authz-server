@@ -16,7 +16,7 @@ import type {
   CreatePermission,
   UpdatePermission,
 } from '@krgeobuk/permission/interfaces';
-import { ServiceTcpPatterns } '@krgeobuk/service/tcp/patterns';
+import { ServiceTcpPatterns } from '@krgeobuk/service/tcp';
 
 import { RolePermissionService } from '@modules/role-permission/index.js';
 import { RoleService } from '@modules/role/index.js';
@@ -292,6 +292,7 @@ export class PermissionService {
         permissionId,
         action: permission.action,
         serviceId: permission.serviceId,
+        deletionType: 'soft',
       });
 
       return result;
@@ -325,7 +326,9 @@ export class PermissionService {
     const hasServiceIdFilter = !!query.serviceId;
     const serviceIds = query.serviceId ?? permissions.map((permission) => permission.serviceId!);
 
-    const serviceMsgPattern = hasServiceIdFilter ? ServiceTcpPatterns.FIND_BY_ID : ServiceTcpPatterns.FIND_BY_IDS;
+    const serviceMsgPattern = hasServiceIdFilter
+      ? ServiceTcpPatterns.FIND_BY_ID
+      : ServiceTcpPatterns.FIND_BY_IDS;
     const serviceMsgPayload = hasServiceIdFilter ? { serviceId: serviceIds } : { serviceIds };
 
     try {
@@ -389,7 +392,7 @@ export class PermissionService {
   }
 
   private async getServiceById(serviceId: string): Promise<Service> {
-    try {      
+    try {
       return await firstValueFrom(
         this.portalClient.send<Service>(ServiceTcpPatterns.FIND_BY_ID, { serviceId })
       );

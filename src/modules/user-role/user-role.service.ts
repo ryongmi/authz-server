@@ -206,7 +206,7 @@ export class UserRoleService {
 
     try {
       // 1. 기존 할당 역할 조회
-      const existingRoles = await this.getRoleIds(dto.userId);
+      const existingRoles = await this.getRoleIds(userId);
       const newRoles = roleIds.filter((id) => !existingRoles.includes(id));
       const duplicates = roleIds.filter((id) => existingRoles.includes(id));
 
@@ -225,7 +225,7 @@ export class UserRoleService {
             skipped: duplicates.length,
             duplicates,
             newAssignments: [],
-            userId: userId,
+            userId,
             assignedRoles: [],
           },
         };

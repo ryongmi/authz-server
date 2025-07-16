@@ -52,6 +52,24 @@ export class ServiceVisibleRoleTcpController {
     }
   }
 
+  @MessagePattern(ServiceVisibleRoleTcpPatterns.FIND_ROLE_COUNTS_BATCH)
+  async findRoleCountsBatch(
+    @Payload() data: { serviceIds: string[] }
+  ): Promise<Map<string, number>> {
+    try {
+      this.logger.debug('TCP service-visible-role find role count batch requested', {
+        serviceCount: data.serviceIds.length,
+      });
+      return await this.svrService.getRoleCountsBatch(data.serviceIds);
+    } catch (error: unknown) {
+      this.logger.error('TCP service-visible-role find role count batch failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        serviceCount: data.serviceIds.length,
+      });
+      throw error;
+    }
+  }
+
   // ==================== 존재 확인 ====================
 
   @MessagePattern(ServiceVisibleRoleTcpPatterns.EXISTS)
