@@ -394,5 +394,254 @@ export class AuthorizationService {
       return [];
     }
   }
+
+  // ==================== ENHANCED HELPER METHODS ====================
+
+  /**
+   * 패턴 매칭을 지원하는 권한 검증 헬퍼
+   * 단일 권한 검증의 간편한 인터페이스 제공
+   */
+  async hasPermission(userId: string, action: string, serviceId?: string): Promise<boolean> {
+    return this.checkUserPermission({ userId, action, ...(serviceId && { serviceId }) });
+  }
+
+  /**
+   * 여러 권한 중 하나라도 있는지 확인 (OR 조건)
+   * 배치 처리로 성능 최적화
+   */
+  async hasAnyPermission(userId: string, actions: string[], serviceId?: string): Promise<boolean> {
+    if (actions.length === 0) return true;
+    if (actions.length === 1)
+      return this.hasPermission(userId, actions[0]!, serviceId ?? undefined);
+
+    try {
+      // 배치 처리를 위한 병렬 권한 체크
+      const results = await Promise.all(
+        actions.map((action) => this.hasPermission(userId, action, serviceId ?? undefined))
+      );
+
+      const hasAnyPermission = results.some((result) => result);
+
+      this.logger.debug('Any permission check completed', {
+        userId,
+        actions,
+        serviceId,
+        hasAnyPermission,
+        checkedCount: actions.length,
+      });
+
+      return hasAnyPermission;
+    } catch (error: unknown) {
+      this.logger.error('Any permission check failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId,
+        actions,
+        serviceId,
+      });
+
+      return false;
+    }
+  }
+
+  /**
+   * 모든 권한을 가지고 있는지 확인 (AND 조건)
+   * 배치 처리로 성능 최적화
+   */
+  async hasAllPermissions(userId: string, actions: string[], serviceId?: string): Promise<boolean> {
+    if (actions.length === 0) return true;
+    if (actions.length === 1)
+      return this.hasPermission(userId, actions[0]!, serviceId ?? undefined);
+
+    try {
+      // 배치 처리를 위한 병렬 권한 체크
+      const results = await Promise.all(
+        actions.map((action) => this.hasPermission(userId, action, serviceId ?? undefined))
+      );
+
+      const hasAllPermissions = results.every((result) => result);
+
+      this.logger.debug('All permissions check completed', {
+        userId,
+        actions,
+        serviceId,
+        hasAllPermissions,
+        checkedCount: actions.length,
+      });
+
+      return hasAllPermissions;
+    } catch (error: unknown) {
+      this.logger.error('All permissions check failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId,
+        actions,
+        serviceId,
+      });
+
+      return false;
+    }
+  }
+
+  /**
+   * 여러 역할 중 하나라도 있는지 확인 (OR 조건)
+   * 배치 처리로 성능 최적화
+   */
+  async hasAnyRole(userId: string, roleNames: string[], serviceId?: string): Promise<boolean> {
+    if (roleNames.length === 0) return true;
+    if (roleNames.length === 1)
+      return this.checkUserRole({
+        userId,
+        roleName: roleNames[0]!,
+        ...(serviceId && { serviceId }),
+      });
+
+    try {
+      // 배치 처리를 위한 병렬 역할 체크
+      const results = await Promise.all(
+        roleNames.map((roleName) =>
+          this.checkUserRole({ userId, roleName, ...(serviceId && { serviceId }) })
+        )
+      );
+
+      const hasAnyRole = results.some((result) => result);
+
+      this.logger.debug('Any role check completed', {
+        userId,
+        roleNames,
+        serviceId,
+        hasAnyRole,
+        checkedCount: roleNames.length,
+      });
+
+      return hasAnyRole;
+    } catch (error: unknown) {
+      this.logger.error('Any role check failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId,
+        roleNames,
+        serviceId,
+      });
+
+      return false;
+    }
+  }
+
+  /**
+   * 모든 역할을 가지고 있는지 확인 (AND 조건)
+   * 배치 처리로 성능 최적화
+   */
+  async hasAllRoles(userId: string, roleNames: string[], serviceId?: string): Promise<boolean> {
+    if (roleNames.length === 0) return true;
+    if (roleNames.length === 1)
+      return this.checkUserRole({
+        userId,
+        roleName: roleNames[0]!,
+        ...(serviceId && { serviceId }),
+      });
+
+    try {
+      // 배치 처리를 위한 병렬 역할 체크
+      const results = await Promise.all(
+        roleNames.map((roleName) =>
+          this.checkUserRole({ userId, roleName, ...(serviceId && { serviceId }) })
+        )
+      );
+
+      const hasAllRoles = results.every((result) => result);
+
+      this.logger.debug('All roles check completed', {
+        userId,
+        roleNames,
+        serviceId,
+        hasAllRoles,
+        checkedCount: roleNames.length,
+      });
+
+      return hasAllRoles;
+    } catch (error: unknown) {
+      this.logger.error('All roles check failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId,
+        roleNames,
+        serviceId,
+      });
+
+      return false;
+    }
+  }
+
+  /**
+   * 복합 권한 조건 검증 (권한 + 역할 조합)
+   * 유연한 AND/OR 조건 지원
+   */
+  async checkComplexPermission(attrs: {
+    userId: string;
+    permissions?: string[];
+    roles?: string[];
+    permissionOperator?: 'AND' | 'OR';
+    roleOperator?: 'AND' | 'OR';
+    combinationOperator?: 'AND' | 'OR';
+    serviceId?: string;
+  }): Promise<boolean> {
+    const {
+      userId,
+      permissions = [],
+      roles = [],
+      permissionOperator = 'AND',
+      roleOperator = 'AND',
+      combinationOperator = 'AND',
+      serviceId,
+    } = attrs;
+
+    try {
+      // 권한 체크
+      let permissionResult = true;
+      if (permissions.length > 0) {
+        permissionResult =
+          permissionOperator === 'OR'
+            ? await this.hasAnyPermission(userId, permissions, serviceId)
+            : await this.hasAllPermissions(userId, permissions, serviceId);
+      }
+
+      // 역할 체크
+      let roleResult = true;
+      if (roles.length > 0) {
+        roleResult =
+          roleOperator === 'OR'
+            ? await this.hasAnyRole(userId, roles, serviceId)
+            : await this.hasAllRoles(userId, roles, serviceId);
+      }
+
+      // 결합 조건 적용
+      const finalResult =
+        combinationOperator === 'OR'
+          ? permissionResult || roleResult
+          : permissionResult && roleResult;
+
+      this.logger.debug('Complex permission check completed', {
+        userId,
+        permissions,
+        roles,
+        permissionOperator,
+        roleOperator,
+        combinationOperator,
+        serviceId,
+        permissionResult,
+        roleResult,
+        finalResult,
+      });
+
+      return finalResult;
+    } catch (error: unknown) {
+      this.logger.error('Complex permission check failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId,
+        permissions,
+        roles,
+        serviceId,
+      });
+
+      return false;
+    }
+  }
 }
 
