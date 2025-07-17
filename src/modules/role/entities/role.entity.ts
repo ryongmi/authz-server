@@ -20,6 +20,6 @@ export class RoleEntity extends BaseEntityUUID {
   })
   priority?: number;
 
-  @Column({ type: 'uuid', nullable: true })
-  serviceId!: string | null; // 외래 키지만 관계는 맺지 않음
+  @Column({ type: 'uuid' })
+  serviceId!: string; // 외래 키지만 관계는 맺지 않음
 }
