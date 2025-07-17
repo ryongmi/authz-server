@@ -17,11 +17,11 @@ export class ServiceVisibleRoleRepository extends BaseRepository<ServiceVisibleR
    */
   async findRoleIdsByServiceId(serviceId: string): Promise<string[]> {
     const result = await this.createQueryBuilder('svr')
-      .select('svr.roleId')
-      .where('svr.serviceId = :serviceId', { serviceId })
+      .select('svr.role_id')
+      .where('svr.service_id = :serviceId', { serviceId })
       .getRawMany();
 
-    return result.map((row) => row.svr_roleId);
+    return result.map((row) => row.role_id);
   }
 
   /**
@@ -29,11 +29,11 @@ export class ServiceVisibleRoleRepository extends BaseRepository<ServiceVisibleR
    */
   async findServiceIdsByRoleId(roleId: string): Promise<string[]> {
     const result = await this.createQueryBuilder('svr')
-      .select('svr.serviceId')
-      .where('svr.roleId = :roleId', { roleId })
+      .select('svr.service_id')
+      .where('svr.role_id = :roleId', { roleId })
       .getRawMany();
 
-    return result.map((row) => row.svr_serviceId);
+    return result.map((row) => row.service_id);
   }
 
   /**
@@ -41,15 +41,15 @@ export class ServiceVisibleRoleRepository extends BaseRepository<ServiceVisibleR
    */
   async findRoleIdsByServiceIds(serviceIds: string[]): Promise<Map<string, string[]>> {
     const result = await this.createQueryBuilder('svr')
-      .select(['svr.serviceId', 'svr.roleId'])
-      .where('svr.serviceId IN (:...serviceIds)', { serviceIds })
+      .select(['svr.service_id', 'svr.role_id'])
+      .where('svr.service_id IN (:...serviceIds)', { serviceIds })
       .getRawMany();
 
     const serviceRoleMap = new Map<string, string[]>();
 
     result.forEach((row) => {
-      const serviceId = row.svr_serviceId;
-      const roleId = row.svr_roleId;
+      const serviceId = row.service_id;
+      const roleId = row.role_id;
 
       if (!serviceRoleMap.has(serviceId)) {
         serviceRoleMap.set(serviceId, []);
@@ -65,15 +65,15 @@ export class ServiceVisibleRoleRepository extends BaseRepository<ServiceVisibleR
    */
   async findServiceIdsByRoleIds(roleIds: string[]): Promise<Map<string, string[]>> {
     const result = await this.createQueryBuilder('svr')
-      .select(['svr.roleId', 'svr.serviceId'])
-      .where('svr.roleId IN (:...roleIds)', { roleIds })
+      .select(['svr.role_id', 'svr.service_id'])
+      .where('svr.role_id IN (:...roleIds)', { roleIds })
       .getRawMany();
 
     const roleServiceMap = new Map<string, string[]>();
 
     result.forEach((row) => {
-      const roleId = row.svr_roleId;
-      const serviceId = row.svr_serviceId;
+      const roleId = row.role_id;
+      const serviceId = row.service_id;
 
       if (!roleServiceMap.has(roleId)) {
         roleServiceMap.set(roleId, []);
@@ -90,11 +90,10 @@ export class ServiceVisibleRoleRepository extends BaseRepository<ServiceVisibleR
   async existsServiceVisibleRole(serviceId: string, roleId: string): Promise<boolean> {
     const result = await this.createQueryBuilder('svr')
       .select('1')
-      .where('svr.serviceId = :serviceId AND svr.roleId = :roleId', { serviceId, roleId })
+      .where('svr.service_id = :serviceId AND svr.role_id = :roleId', { serviceId, roleId })
       .limit(1)
       .getRawOne();
 
     return !!result;
   }
 }
-

@@ -62,7 +62,7 @@ export class UserRoleController {
     status: UserRoleError.FETCH_ERROR.statusCode,
     description: UserRoleError.FETCH_ERROR.message,
   })
-  @RequireRole('super-admin')
+  @RequireRole('superAdmin')
   @Serialize({
     ...UserRoleResponse.FETCH_SUCCESS,
   })
@@ -91,7 +91,7 @@ export class UserRoleController {
     status: UserRoleError.FETCH_ERROR.statusCode,
     description: UserRoleError.FETCH_ERROR.message,
   })
-  @RequireRole('super-admin')
+  @RequireRole('superAdmin')
   @Serialize({
     ...UserRoleResponse.FETCH_SUCCESS,
   })
@@ -125,7 +125,7 @@ export class UserRoleController {
     status: UserRoleError.FETCH_ERROR.statusCode,
     description: UserRoleError.FETCH_ERROR.message,
   })
-  @RequireRole('super-admin')
+  @RequireRole('superAdmin')
   @Serialize({
     ...UserRoleResponse.FETCH_SUCCESS,
   })
@@ -165,7 +165,7 @@ export class UserRoleController {
     status: UserRoleError.USER_ROLE_ALREADY_EXISTS.statusCode,
     description: UserRoleError.USER_ROLE_ALREADY_EXISTS.message,
   })
-  @RequireRole('super-admin')
+  @RequireRole('superAdmin')
   @Serialize({
     ...UserRoleResponse.ASSIGN_SUCCESS,
   })
@@ -203,7 +203,7 @@ export class UserRoleController {
     status: UserRoleError.REVOKE_ERROR.statusCode,
     description: UserRoleError.REVOKE_ERROR.message,
   })
-  @RequireRole('super-admin')
+  @RequireRole('superAdmin')
   async revokeUserRole(@Param() params: UserRoleParamsDto): Promise<void> {
     await this.userRoleService.revokeUserRole(params);
   }
@@ -234,7 +234,7 @@ export class UserRoleController {
     status: UserRoleError.ASSIGN_MULTIPLE_ERROR.statusCode,
     description: UserRoleError.ASSIGN_MULTIPLE_ERROR.message,
   })
-  @RequireRole('super-admin')
+  @RequireRole('superAdmin')
   @Serialize({
     ...UserRoleResponse.ASSIGN_MULTIPLE_SUCCESS,
   })
@@ -272,7 +272,7 @@ export class UserRoleController {
     status: UserRoleError.REVOKE_MULTIPLE_ERROR.statusCode,
     description: UserRoleError.REVOKE_MULTIPLE_ERROR.message,
   })
-  @RequireRole('super-admin')
+  @RequireRole('superAdmin')
   @Serialize({
     ...UserRoleResponse.REVOKE_MULTIPLE_SUCCESS,
   })
@@ -310,7 +310,7 @@ export class UserRoleController {
     status: UserRoleError.REPLACE_ERROR.statusCode,
     description: UserRoleError.REPLACE_ERROR.message,
   })
-  @RequireRole('super-admin')
+  @RequireRole('superAdmin')
   @Serialize({
     ...UserRoleResponse.REPLACE_SUCCESS,
   })

@@ -54,7 +54,7 @@ services:
       dockerfile: Dockerfile
       target: local
     ports:
-      - 8100:8000
+      - 8100:8100
       - 9230:9229 # Node.js 디버깅 포트
     env_file:
       - ./envs/.env.local

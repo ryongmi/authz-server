@@ -17,11 +17,11 @@ export class RolePermissionRepository extends BaseRepository<RolePermissionEntit
    */
   async findPermissionIdsByRoleId(roleId: string): Promise<string[]> {
     const result = await this.createQueryBuilder('rp')
-      .select('rp.permissionId')
-      .where('rp.roleId = :roleId', { roleId })
+      .select('rp.permission_id')
+      .where('rp.role_id = :roleId', { roleId })
       .getRawMany();
 
-    return result.map((row) => row.rp_permissionId);
+    return result.map((row) => row.permission_id);
   }
 
   /**
@@ -29,11 +29,11 @@ export class RolePermissionRepository extends BaseRepository<RolePermissionEntit
    */
   async findRoleIdsByPermissionId(permissionId: string): Promise<string[]> {
     const result = await this.createQueryBuilder('rp')
-      .select('rp.roleId')
-      .where('rp.permissionId = :permissionId', { permissionId })
+      .select('rp.role_id')
+      .where('rp.permission_id = :permissionId', { permissionId })
       .getRawMany();
 
-    return result.map((row) => row.rp_roleId);
+    return result.map((row) => row.role_id);
   }
 
   /**
@@ -41,15 +41,15 @@ export class RolePermissionRepository extends BaseRepository<RolePermissionEntit
    */
   async findPermissionIdsByRoleIds(roleIds: string[]): Promise<Map<string, string[]>> {
     const result = await this.createQueryBuilder('rp')
-      .select(['rp.roleId', 'rp.permissionId'])
-      .where('rp.roleId IN (:...roleIds)', { roleIds })
+      .select(['rp.role_id', 'rp.permission_id'])
+      .where('rp.role_id IN (:...roleIds)', { roleIds })
       .getRawMany();
 
     const rolePermissionMap = new Map<string, string[]>();
 
     result.forEach((row) => {
-      const roleId = row.rp_roleId;
-      const permissionId = row.rp_permissionId;
+      const roleId = row.role_id;
+      const permissionId = row.permission_id;
 
       if (!rolePermissionMap.has(roleId)) {
         rolePermissionMap.set(roleId, []);
@@ -65,15 +65,15 @@ export class RolePermissionRepository extends BaseRepository<RolePermissionEntit
    */
   async findRoleIdsByPermissionIds(permissionIds: string[]): Promise<Map<string, string[]>> {
     const result = await this.createQueryBuilder('rp')
-      .select(['rp.permissionId', 'rp.roleId'])
-      .where('rp.permissionId IN (:...permissionIds)', { permissionIds })
+      .select(['rp.permission_id', 'rp.role_id'])
+      .where('rp.permission_id IN (:...permissionIds)', { permissionIds })
       .getRawMany();
 
     const permissionRoleMap = new Map<string, string[]>();
 
     result.forEach((row) => {
-      const permissionId = row.rp_permissionId;
-      const roleId = row.rp_roleId;
+      const permissionId = row.permission_id;
+      const roleId = row.role_id;
 
       if (!permissionRoleMap.has(permissionId)) {
         permissionRoleMap.set(permissionId, []);
@@ -90,7 +90,7 @@ export class RolePermissionRepository extends BaseRepository<RolePermissionEntit
   async existsRolePermission(roleId: string, permissionId: string): Promise<boolean> {
     const result = await this.createQueryBuilder('rp')
       .select('1')
-      .where('rp.roleId = :roleId AND rp.permissionId = :permissionId', { roleId, permissionId })
+      .where('rp.role_id = :roleId AND rp.permission_id = :permissionId', { roleId, permissionId })
       .limit(1)
       .getRawOne();
 

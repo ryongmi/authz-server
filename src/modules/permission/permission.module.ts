@@ -17,4 +17,3 @@ import { PermissionService } from './permission.service.js';
   exports: [PermissionService],
 })
 export class PermissionModule {}
-

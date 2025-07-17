@@ -63,7 +63,7 @@ export class ServiceVisibleRoleController {
     status: ServiceVisibleRoleError.FETCH_ERROR.statusCode,
     description: ServiceVisibleRoleError.FETCH_ERROR.message,
   })
-  @RequireRole('super-admin')
+  @RequireRole('superAdmin')
   @Serialize({
     ...ServiceVisibleRoleResponse.FETCH_SUCCESS,
   })
@@ -92,7 +92,7 @@ export class ServiceVisibleRoleController {
     status: ServiceVisibleRoleError.FETCH_ERROR.statusCode,
     description: ServiceVisibleRoleError.FETCH_ERROR.message,
   })
-  @RequireRole('super-admin')
+  @RequireRole('superAdmin')
   @Serialize({
     ...ServiceVisibleRoleResponse.FETCH_SUCCESS,
   })
@@ -126,7 +126,7 @@ export class ServiceVisibleRoleController {
     status: ServiceVisibleRoleError.FETCH_ERROR.statusCode,
     description: ServiceVisibleRoleError.FETCH_ERROR.message,
   })
-  @RequireRole('super-admin')
+  @RequireRole('superAdmin')
   @Serialize({
     ...ServiceVisibleRoleResponse.FETCH_SUCCESS,
   })
@@ -168,7 +168,7 @@ export class ServiceVisibleRoleController {
     status: ServiceVisibleRoleError.SERVICE_VISIBLE_ROLE_ALREADY_EXISTS.statusCode,
     description: ServiceVisibleRoleError.SERVICE_VISIBLE_ROLE_ALREADY_EXISTS.message,
   })
-  @RequireRole('super-admin')
+  @RequireRole('superAdmin')
   @Serialize({
     ...ServiceVisibleRoleResponse.ASSIGN_SUCCESS,
   })
@@ -206,7 +206,7 @@ export class ServiceVisibleRoleController {
     status: ServiceVisibleRoleError.SERVICE_VISIBLE_ROLE_NOT_FOUND.statusCode,
     description: ServiceVisibleRoleError.SERVICE_VISIBLE_ROLE_NOT_FOUND.message,
   })
-  @RequireRole('super-admin')
+  @RequireRole('superAdmin')
   @Serialize({
     ...ServiceVisibleRoleResponse.REVOKE_SUCCESS,
   })
@@ -240,7 +240,7 @@ export class ServiceVisibleRoleController {
     status: ServiceVisibleRoleError.ASSIGN_MULTIPLE_ERROR.statusCode,
     description: ServiceVisibleRoleError.ASSIGN_MULTIPLE_ERROR.message,
   })
-  @RequireRole('super-admin')
+  @RequireRole('superAdmin')
   @Serialize({
     ...ServiceVisibleRoleResponse.ASSIGN_MULTIPLE_SUCCESS,
   })
@@ -278,7 +278,7 @@ export class ServiceVisibleRoleController {
     status: ServiceVisibleRoleError.REVOKE_MULTIPLE_ERROR.statusCode,
     description: ServiceVisibleRoleError.REVOKE_MULTIPLE_ERROR.message,
   })
-  @RequireRole('super-admin')
+  @RequireRole('superAdmin')
   @Serialize({
     ...ServiceVisibleRoleResponse.REVOKE_MULTIPLE_SUCCESS,
   })
@@ -316,7 +316,7 @@ export class ServiceVisibleRoleController {
     status: ServiceVisibleRoleError.REPLACE_ERROR.statusCode,
     description: ServiceVisibleRoleError.REPLACE_ERROR.message,
   })
-  @RequireRole('super-admin')
+  @RequireRole('superAdmin')
   @Serialize({
     ...ServiceVisibleRoleResponse.REPLACE_SUCCESS,
   })

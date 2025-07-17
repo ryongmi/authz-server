@@ -9,6 +9,7 @@ import { winstonConfig } from '@krgeobuk/core/logger';
 import { RedisModule, DatabaseModule } from '@database/index.js';
 import { AppConfigModule } from '@config/index.js';
 import { SharedClientsModule } from '@common/clients/index.js';
+import { AuthorizationGuardModule } from '@common/authorization/index.js';
 import { JwtModule } from '@common/jwt/index.js';
 import { AuthorizationModule } from '@modules/authorization/index.js';
 import { PermissionModule } from '@modules/permission/index.js';
@@ -23,6 +24,8 @@ import { UserRoleModule } from '@modules/user-role/index.js';
     AppConfigModule,
     // TCP 연결 모듈
     SharedClientsModule,
+    // authorization guard DI 주입 전용 모듈
+    AuthorizationGuardModule,
     // JWT ACCESS TOKEN PUBLIC KEY
     JwtModule,
     DatabaseModule,

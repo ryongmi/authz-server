@@ -39,12 +39,12 @@ export class PermissionRepository extends BaseRepository<PermissionEntity> {
       `${permissionAlias}.id`,
       `${permissionAlias}.action`,
       `${permissionAlias}.description`,
-      `${permissionAlias}.serviceId`,
+      `${permissionAlias}.service_id`,
     ]);
 
     // 인덱스 활용을 위한 조건 순서 최적화
     if (serviceId) {
-      qb.andWhere(`${permissionAlias}.serviceId = :serviceId`, { serviceId });
+      qb.andWhere(`${permissionAlias}.service_id = :serviceId`, { serviceId });
     }
 
     if (action) {

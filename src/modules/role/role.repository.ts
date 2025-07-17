@@ -38,12 +38,12 @@ export class RoleRepository extends BaseRepository<RoleEntity> {
       `${roleAlias}.name`,
       `${roleAlias}.description`,
       `${roleAlias}.priority`,
-      `${roleAlias}.serviceId`,
+      `${roleAlias}.service_id`,
     ]);
 
     // 검색 조건 적용
     if (serviceId) {
-      qb.andWhere(`${roleAlias}.serviceId = :serviceId`, { serviceId });
+      qb.andWhere(`${roleAlias}.service_id = :serviceId`, { serviceId });
     }
 
     if (name) {

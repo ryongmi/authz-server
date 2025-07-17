@@ -17,11 +17,11 @@ export class UserRoleRepository extends BaseRepository<UserRoleEntity> {
    */
   async findRoleIdsByUserId(userId: string): Promise<string[]> {
     const result = await this.createQueryBuilder('ur')
-      .select('ur.roleId')
-      .where('ur.userId = :userId', { userId })
+      .select('ur.role_id')
+      .where('ur.user_id = :userId', { userId })
       .getRawMany();
 
-    return result.map((row) => row.ur_roleId);
+    return result.map((row) => row.role_id);
   }
 
   /**
@@ -29,11 +29,11 @@ export class UserRoleRepository extends BaseRepository<UserRoleEntity> {
    */
   async findUserIdsByRoleId(roleId: string): Promise<string[]> {
     const result = await this.createQueryBuilder('ur')
-      .select('ur.userId')
-      .where('ur.roleId = :roleId', { roleId })
+      .select('ur.user_id')
+      .where('ur.role_id = :roleId', { roleId })
       .getRawMany();
 
-    return result.map((row) => row.ur_userId);
+    return result.map((row) => row.user_id);
   }
 
   /**
@@ -41,15 +41,15 @@ export class UserRoleRepository extends BaseRepository<UserRoleEntity> {
    */
   async findRoleIdsByUserIds(userIds: string[]): Promise<Map<string, string[]>> {
     const result = await this.createQueryBuilder('ur')
-      .select(['ur.userId', 'ur.roleId'])
-      .where('ur.userId IN (:...userIds)', { userIds })
+      .select(['ur.user_id', 'ur.role_id'])
+      .where('ur.user_id IN (:...userIds)', { userIds })
       .getRawMany();
 
     const userRoleMap = new Map<string, string[]>();
 
     result.forEach((row) => {
-      const userId = row.ur_userId;
-      const roleId = row.ur_roleId;
+      const userId = row.user_id;
+      const roleId = row.role_id;
 
       if (!userRoleMap.has(userId)) {
         userRoleMap.set(userId, []);
@@ -65,15 +65,15 @@ export class UserRoleRepository extends BaseRepository<UserRoleEntity> {
    */
   async findUserIdsByRoleIds(roleIds: string[]): Promise<Map<string, string[]>> {
     const result = await this.createQueryBuilder('ur')
-      .select(['ur.roleId', 'ur.userId'])
-      .where('ur.roleId IN (:...roleIds)', { roleIds })
+      .select(['ur.role_id', 'ur.user_id'])
+      .where('ur.role_id IN (:...roleIds)', { roleIds })
       .getRawMany();
 
     const roleUserMap = new Map<string, string[]>();
 
     result.forEach((row) => {
-      const roleId = row.ur_roleId;
-      const userId = row.ur_userId;
+      const roleId = row.role_id;
+      const userId = row.user_id;
 
       if (!roleUserMap.has(roleId)) {
         roleUserMap.set(roleId, []);
@@ -90,7 +90,7 @@ export class UserRoleRepository extends BaseRepository<UserRoleEntity> {
   async existsUserRole(userId: string, roleId: string): Promise<boolean> {
     const result = await this.createQueryBuilder('ur')
       .select('1')
-      .where('ur.userId = :userId AND ur.roleId = :roleId', { userId, roleId })
+      .where('ur.user_id = :userId AND ur.role_id = :roleId', { userId, roleId })
       .limit(1)
       .getRawOne();
 

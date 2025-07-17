@@ -61,7 +61,7 @@ export class RoleController {
     status: RoleError.ROLE_FETCH_ERROR.statusCode,
     description: RoleError.ROLE_FETCH_ERROR.message,
   })
-  @RequireRole('super-admin')
+  @RequireRole('superAdmin')
   @Serialize({
     dto: RolePaginatedSearchResultDto,
     ...RoleResponse.FETCH_SUCCESS,
@@ -86,7 +86,7 @@ export class RoleController {
     status: RoleError.ROLE_ALREADY_EXISTS.statusCode,
     description: RoleError.ROLE_ALREADY_EXISTS.message,
   })
-  @RequireRole('super-admin')
+  @RequireRole('superAdmin')
   @Serialize({
     ...RoleResponse.CREATE_SUCCESS,
   })
@@ -116,7 +116,7 @@ export class RoleController {
     status: RoleError.ROLE_FETCH_ERROR.statusCode,
     description: RoleError.ROLE_FETCH_ERROR.message,
   })
-  @RequireRole('super-admin')
+  @RequireRole('superAdmin')
   @Serialize({
     dto: RoleDetailDto,
     ...RoleResponse.FETCH_SUCCESS,
@@ -147,7 +147,7 @@ export class RoleController {
     status: RoleError.ROLE_UPDATE_ERROR.statusCode,
     description: RoleError.ROLE_UPDATE_ERROR.message,
   })
-  @RequireRole('super-admin')
+  @RequireRole('superAdmin')
   @Serialize({
     ...RoleResponse.UPDATE_SUCCESS,
   })
@@ -179,7 +179,7 @@ export class RoleController {
     status: RoleError.ROLE_DELETE_ERROR.statusCode,
     description: RoleError.ROLE_DELETE_ERROR.message,
   })
-  @RequireRole('super-admin')
+  @RequireRole('superAdmin')
   @Serialize({
     ...RoleResponse.DELETE_SUCCESS,
   })

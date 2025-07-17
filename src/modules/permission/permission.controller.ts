@@ -61,7 +61,7 @@ export class PermissionController {
     status: PermissionError.PERMISSION_FETCH_ERROR.statusCode,
     description: PermissionError.PERMISSION_FETCH_ERROR.message,
   })
-  @RequireRole('super-admin')
+  @RequireRole('superAdmin')
   @Serialize({
     dto: PermissionPaginatedSearchResultDto,
     ...PermissionResponse.FETCH_SUCCESS,
@@ -88,7 +88,7 @@ export class PermissionController {
     status: PermissionError.PERMISSION_ALREADY_EXISTS.statusCode,
     description: PermissionError.PERMISSION_ALREADY_EXISTS.message,
   })
-  @RequireRole('super-admin')
+  @RequireRole('superAdmin')
   @Serialize({
     ...PermissionResponse.CREATE_SUCCESS,
   })
@@ -118,7 +118,7 @@ export class PermissionController {
     status: PermissionError.PERMISSION_FETCH_ERROR.statusCode,
     description: PermissionError.PERMISSION_FETCH_ERROR.message,
   })
-  @RequireRole('super-admin')
+  @RequireRole('superAdmin')
   @Serialize({
     dto: PermissionDetailDto,
     ...PermissionResponse.FETCH_SUCCESS,
@@ -149,7 +149,7 @@ export class PermissionController {
     status: PermissionError.PERMISSION_UPDATE_ERROR.statusCode,
     description: PermissionError.PERMISSION_UPDATE_ERROR.message,
   })
-  @RequireRole('super-admin')
+  @RequireRole('superAdmin')
   @Serialize({
     ...PermissionResponse.UPDATE_SUCCESS,
   })
@@ -181,7 +181,7 @@ export class PermissionController {
     status: PermissionError.PERMISSION_DELETE_ERROR.statusCode,
     description: PermissionError.PERMISSION_DELETE_ERROR.message,
   })
-  @RequireRole('super-admin')
+  @RequireRole('superAdmin')
   @Serialize({
     ...PermissionResponse.DELETE_SUCCESS,
   })

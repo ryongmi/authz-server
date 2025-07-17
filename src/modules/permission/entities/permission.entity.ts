@@ -12,7 +12,7 @@ export class PermissionEntity extends BaseEntityUUID {
   action!: string; // 권한 명칭 (ex: user:create)
 
   @Column({ type: 'varchar', length: 255, nullable: true })
-  description?: string; // 설명
+  description?: string | null; // 설명
 
   @Column({ type: 'uuid' })
   serviceId!: string; // 어떤 서비스에 속한 권한인지

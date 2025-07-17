@@ -62,7 +62,7 @@ export class RolePermissionController {
     status: RolePermissionError.FETCH_ERROR.statusCode,
     description: RolePermissionError.FETCH_ERROR.message,
   })
-  @RequireRole('super-admin')
+  @RequireRole('superAdmin')
   @Serialize({
     ...RolePermissionResponse.FETCH_SUCCESS,
   })
@@ -91,7 +91,7 @@ export class RolePermissionController {
     status: RolePermissionError.FETCH_ERROR.statusCode,
     description: RolePermissionError.FETCH_ERROR.message,
   })
-  @RequireRole('super-admin')
+  @RequireRole('superAdmin')
   @Serialize({
     ...RolePermissionResponse.FETCH_SUCCESS,
   })
@@ -125,7 +125,7 @@ export class RolePermissionController {
     status: RolePermissionError.FETCH_ERROR.statusCode,
     description: RolePermissionError.FETCH_ERROR.message,
   })
-  @RequireRole('super-admin')
+  @RequireRole('superAdmin')
   @Serialize({
     ...RolePermissionResponse.FETCH_SUCCESS,
   })
@@ -165,7 +165,7 @@ export class RolePermissionController {
     status: RolePermissionError.ROLE_PERMISSION_ALREADY_EXISTS.statusCode,
     description: RolePermissionError.ROLE_PERMISSION_ALREADY_EXISTS.message,
   })
-  @RequireRole('super-admin')
+  @RequireRole('superAdmin')
   @Serialize({
     ...RolePermissionResponse.ASSIGN_SUCCESS,
   })
@@ -203,7 +203,7 @@ export class RolePermissionController {
     status: RolePermissionError.REVOKE_ERROR.statusCode,
     description: RolePermissionError.REVOKE_ERROR.message,
   })
-  @RequireRole('super-admin')
+  @RequireRole('superAdmin')
   async revokeRolePermission(@Param() params: RolePermissionParamsDto): Promise<void> {
     await this.rolePermissionService.revokeRolePermission(params);
   }
@@ -234,7 +234,7 @@ export class RolePermissionController {
     status: RolePermissionError.ASSIGN_MULTIPLE_ERROR.statusCode,
     description: RolePermissionError.ASSIGN_MULTIPLE_ERROR.message,
   })
-  @RequireRole('super-admin')
+  @RequireRole('superAdmin')
   @Serialize({
     ...RolePermissionResponse.ASSIGN_MULTIPLE_SUCCESS,
   })
@@ -272,7 +272,7 @@ export class RolePermissionController {
     status: RolePermissionError.REVOKE_MULTIPLE_ERROR.statusCode,
     description: RolePermissionError.REVOKE_MULTIPLE_ERROR.message,
   })
-  @RequireRole('super-admin')
+  @RequireRole('superAdmin')
   @Serialize({
     ...RolePermissionResponse.REVOKE_MULTIPLE_SUCCESS,
   })
@@ -310,7 +310,7 @@ export class RolePermissionController {
     status: RolePermissionError.REPLACE_ERROR.statusCode,
     description: RolePermissionError.REPLACE_ERROR.message,
   })
-  @RequireRole('super-admin')
+  @RequireRole('superAdmin')
   @Serialize({
     ...RolePermissionResponse.REPLACE_SUCCESS,
   })
