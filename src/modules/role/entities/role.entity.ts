@@ -10,7 +10,7 @@ export class RoleEntity extends BaseEntityUUID {
   name!: string;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
-  description?: string;
+  description?: string | null;
 
   @Column({
     type: 'tinyint',
