@@ -30,6 +30,7 @@ FROM node:23-alpine AS local
 WORKDIR /app
 
 COPY .npmrc.docker .npmrc
+# COPY package*.json ./
 COPY package.json ./
 
 # RUN npm install
