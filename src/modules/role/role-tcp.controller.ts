@@ -2,12 +2,7 @@ import { Controller, Logger } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 
 import { TcpOperationResponse, TcpSearchResponse } from '@krgeobuk/core/interfaces';
-import type {
-  RoleSearchQuery,
-  RoleSearchResult,
-  RoleDetail,
-  CreateRole,
-} from '@krgeobuk/role/interfaces';
+import type { RoleSearchQuery, RoleSearchResult, CreateRole } from '@krgeobuk/role/interfaces';
 import { TcpRoleId, TcpMultiServiceIds, TcpRoleUpdate } from '@krgeobuk/role/tcp/interfaces';
 import { RoleTcpPatterns } from '@krgeobuk/role/tcp/patterns';
 import { Role } from '@krgeobuk/shared/role';
@@ -57,11 +52,11 @@ export class RoleTcpController {
    * 역할 ID로 상세 정보 조회
    */
   @MessagePattern(RoleTcpPatterns.FIND_BY_ID)
-  async findRoleById(@Payload() data: TcpRoleId): Promise<RoleDetail | null> {
+  async findRoleById(@Payload() data: TcpRoleId): Promise<Role | null> {
     this.logger.debug(`TCP role detail request: ${data.roleId}`);
 
     try {
-      const role = await this.roleService.getRoleById(data.roleId);
+      const role = await this.roleService.findById(data.roleId);
       this.logger.debug(`TCP role detail response: ${role?.name || 'not found'}`);
       return role;
     } catch (error: unknown) {

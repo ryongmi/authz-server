@@ -69,7 +69,7 @@ export class ServiceVisibleRoleService {
   /**
    * 여러 서비스의 역할 ID 목록 조회 (배치)
    */
-  async getRoleIdsBatch(serviceIds: string[]): Promise<Map<string, string[]>> {
+  async getRoleIdsBatch(serviceIds: string[]): Promise<Record<string, string[]>> {
     try {
       return await this.svrRepo.findRoleIdsByServiceIds(serviceIds);
     } catch (error: unknown) {
@@ -84,7 +84,7 @@ export class ServiceVisibleRoleService {
   /**
    * 여러 역할의 서비스 ID 목록 조회 (배치)
    */
-  async getServiceIdsBatch(roleIds: string[]): Promise<Map<string, string[]>> {
+  async getServiceIdsBatch(roleIds: string[]): Promise<Record<string, string[]>> {
     try {
       return await this.svrRepo.findServiceIdsByRoleIds(roleIds);
     } catch (error: unknown) {
@@ -99,14 +99,14 @@ export class ServiceVisibleRoleService {
   /**
    * 여러 서비스의 역할 수 조회 (배치) - 성능 최적화
    */
-  async getRoleCountsBatch(serviceIds: string[]): Promise<Map<string, number>> {
+  async getRoleCountsBatch(serviceIds: string[]): Promise<Record<string, number>> {
     try {
       const roleIdsMap = await this.svrRepo.findRoleIdsByServiceIds(serviceIds);
-      const roleCounts = new Map<string, number>();
+      const roleCounts: Record<string, number> = {};
 
       serviceIds.forEach((serviceId) => {
-        const roleIds = roleIdsMap.get(serviceId) || [];
-        roleCounts.set(serviceId, roleIds.length);
+        const roleIds = roleIdsMap[serviceId] || [];
+        roleCounts[serviceId] = roleIds.length;
       });
 
       return roleCounts;

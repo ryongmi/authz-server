@@ -178,7 +178,7 @@ export class AuthorizationService {
 
     // 모든 권한 ID 수집
     const allPermissionIds = new Set<string>();
-    for (const permissionIds of rolePermissionMap.values()) {
+    for (const permissionIds of Object.values(rolePermissionMap)) {
       permissionIds.forEach((id) => allPermissionIds.add(id));
     }
 
@@ -324,7 +324,7 @@ export class AuthorizationService {
         await this.rolePermissionService.getPermissionIdsBatch(visibleRoleIds);
       const allPermissions = new Set<string>();
 
-      for (const permissionIds of rolePermissionMap.values()) {
+      for (const permissionIds of Object.values(rolePermissionMap)) {
         permissionIds.forEach((permissionId) => allPermissions.add(permissionId));
       }
 

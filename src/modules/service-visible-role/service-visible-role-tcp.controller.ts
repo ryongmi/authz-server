@@ -55,7 +55,7 @@ export class ServiceVisibleRoleTcpController {
   @MessagePattern(ServiceVisibleRoleTcpPatterns.FIND_ROLE_COUNTS_BATCH)
   async findRoleCountsBatch(
     @Payload() data: { serviceIds: string[] }
-  ): Promise<Map<string, number>> {
+  ): Promise<Record<string, number>> {
     try {
       this.logger.debug('TCP service-visible-role find role count batch requested', {
         serviceCount: data.serviceIds.length,

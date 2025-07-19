@@ -69,7 +69,7 @@ export class RolePermissionService {
   /**
    * 여러 역할의 권한 ID 목록 조회 (배치)
    */
-  async getPermissionIdsBatch(roleIds: string[]): Promise<Map<string, string[]>> {
+  async getPermissionIdsBatch(roleIds: string[]): Promise<Record<string, string[]>> {
     try {
       return await this.rolePermissionRepo.findPermissionIdsByRoleIds(roleIds);
     } catch (error: unknown) {
@@ -84,7 +84,7 @@ export class RolePermissionService {
   /**
    * 여러 권한의 역할 ID 목록 조회 (배치)
    */
-  async getRoleIdsBatch(permissionIds: string[]): Promise<Map<string, string[]>> {
+  async getRoleIdsBatch(permissionIds: string[]): Promise<Record<string, string[]>> {
     try {
       return await this.rolePermissionRepo.findRoleIdsByPermissionIds(permissionIds);
     } catch (error: unknown) {
@@ -99,14 +99,14 @@ export class RolePermissionService {
   /**
    * 여러 권한의 역할 수 조회 (배치) - 성능 최적화
    */
-  async getRoleCountsBatch(permissionIds: string[]): Promise<Map<string, number>> {
+  async getRoleCountsBatch(permissionIds: string[]): Promise<Record<string, number>> {
     try {
       const roleIdsMap = await this.rolePermissionRepo.findRoleIdsByPermissionIds(permissionIds);
-      const roleCounts = new Map<string, number>();
+      const roleCounts: Record<string, number> = {};
 
       permissionIds.forEach((permissionId) => {
-        const roleIds = roleIdsMap.get(permissionId) || [];
-        roleCounts.set(permissionId, roleIds.length);
+        const roleIds = roleIdsMap[permissionId] || [];
+        roleCounts[permissionId] = roleIds.length;
       });
 
       return roleCounts;

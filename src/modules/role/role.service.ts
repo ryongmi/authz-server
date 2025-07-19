@@ -107,11 +107,12 @@ export class RoleService {
     }
 
     const roleIds = roles.items.map((role) => role.id!);
+    const serviceIds = roles.items.map((role) => role.serviceId!);
 
     try {
       const [userCounts, services] = await Promise.all([
         this.getUserCountByRoleIds(roleIds),
-        this.getServicesByQuery(query, roles.items),
+        this.getServicesByQuery(serviceIds),
       ]);
 
       const items = this.buildRoleSearchResults(roles.items, userCounts, services);
@@ -309,21 +310,17 @@ export class RoleService {
 
   // ==================== PRIVATE HELPER METHODS ====================
 
-  private async getUserCountByRoleIds(roleIds: string[]): Promise<Map<string, number>> {
+  private async getUserCountByRoleIds(roleIds: string[]): Promise<Record<string, number>> {
     return await this.userRoleService.getRoleCountsBatch(roleIds);
   }
 
-  private async getServicesByQuery(
-    query: RoleSearchQuery,
-    roles: Partial<RoleEntity>[]
-  ): Promise<Service | Service[]> {
-    const hasServiceIdFilter = !!query.serviceId;
-    const serviceIds = query.serviceId ?? roles.map((role) => role.serviceId!);
+  private async getServicesByQuery(serviceIds: string[]): Promise<Service | Service[]> {
+    const hasServiceIdFilter = serviceIds.length > 1;
 
     const serviceMsgPattern = hasServiceIdFilter
-      ? ServiceTcpPatterns.FIND_BY_ID
-      : ServiceTcpPatterns.FIND_BY_IDS;
-    const serviceMsgPayload = hasServiceIdFilter ? { serviceId: serviceIds } : { serviceIds };
+      ? ServiceTcpPatterns.FIND_BY_IDS
+      : ServiceTcpPatterns.FIND_BY_ID;
+    const serviceMsgPayload = hasServiceIdFilter ? { serviceIds } : { serviceId: serviceIds };
 
     try {
       return await firstValueFrom(
@@ -349,7 +346,7 @@ export class RoleService {
 
   private buildRoleSearchResults(
     roles: Partial<RoleEntity>[],
-    userCounts: Map<string, number>,
+    userCounts: Record<string, number>,
     services: Service | Service[]
   ): RoleSearchResult[] {
     return roles.map((role) => {
@@ -358,7 +355,7 @@ export class RoleService {
           ? (services.find((s) => s.id === role.serviceId) ?? { id: '', name: 'Unknown Service' })
           : services;
 
-      const userCount = userCounts.get(role.id!) || 0;
+      const userCount = userCounts[role.id!] || 0;
 
       return {
         id: role.id!,

@@ -109,11 +109,12 @@ export class PermissionService {
     }
 
     const permissionIds = permissions.items.map((permission) => permission.id!);
+    const serviceIds = permissions.items.map((permission) => permission.serviceId!);
 
     try {
       const [roleCounts, services] = await Promise.all([
         this.getRoleCountsByPermissionIds(permissionIds),
-        this.getServicesByQuery(query, permissions.items),
+        this.getServicesByQuery(serviceIds),
       ]);
 
       const items = this.buildPermissionSearchResults(permissions.items, roleCounts, services);
@@ -314,22 +315,18 @@ export class PermissionService {
 
   private async getRoleCountsByPermissionIds(
     permissionIds: string[]
-  ): Promise<Map<string, number>> {
+  ): Promise<Record<string, number>> {
     // 최적화: 카운트 전용 메서드 사용
     return await this.rolePermissionService.getRoleCountsBatch(permissionIds);
   }
 
-  private async getServicesByQuery(
-    query: PermissionSearchQuery,
-    permissions: Partial<PermissionEntity>[]
-  ): Promise<Service | Service[]> {
-    const hasServiceIdFilter = !!query.serviceId;
-    const serviceIds = query.serviceId ?? permissions.map((permission) => permission.serviceId!);
+  private async getServicesByQuery(serviceIds: string[]): Promise<Service | Service[]> {
+    const hasServiceIdFilter = serviceIds.length > 1;
 
     const serviceMsgPattern = hasServiceIdFilter
-      ? ServiceTcpPatterns.FIND_BY_ID
-      : ServiceTcpPatterns.FIND_BY_IDS;
-    const serviceMsgPayload = hasServiceIdFilter ? { serviceId: serviceIds } : { serviceIds };
+      ? ServiceTcpPatterns.FIND_BY_IDS
+      : ServiceTcpPatterns.FIND_BY_ID;
+    const serviceMsgPayload = hasServiceIdFilter ? { serviceIds } : { serviceId: serviceIds };
 
     try {
       return await firstValueFrom(
@@ -355,7 +352,7 @@ export class PermissionService {
 
   private buildPermissionSearchResults(
     permissions: Partial<PermissionEntity>[],
-    roleCounts: Map<string, number>,
+    roleCounts: Record<string, number>,
     services: Service | Service[]
   ): PermissionSearchResult[] {
     return permissions.map((permission) => {
@@ -367,7 +364,7 @@ export class PermissionService {
             })
           : services;
 
-      const roleCount = roleCounts.get(permission.id!) || 0;
+      const roleCount = roleCounts[permission.id!] || 0;
 
       return {
         id: permission.id!,

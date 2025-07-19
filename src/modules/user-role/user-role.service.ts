@@ -69,7 +69,7 @@ export class UserRoleService {
   /**
    * 여러 사용자의 역할 ID 목록 조회 (배치)
    */
-  async getRoleIdsBatch(userIds: string[]): Promise<Map<string, string[]>> {
+  async getRoleIdsBatch(userIds: string[]): Promise<Record<string, string[]>> {
     try {
       return await this.userRoleRepo.findRoleIdsByUserIds(userIds);
     } catch (error: unknown) {
@@ -84,7 +84,7 @@ export class UserRoleService {
   /**
    * 여러 역할의 사용자 ID 목록 조회 (배치)
    */
-  async getUserIdsBatch(roleIds: string[]): Promise<Map<string, string[]>> {
+  async getUserIdsBatch(roleIds: string[]): Promise<Record<string, string[]>> {
     try {
       return await this.userRoleRepo.findUserIdsByRoleIds(roleIds);
     } catch (error: unknown) {
@@ -99,14 +99,14 @@ export class UserRoleService {
   /**
    * 여러 권한의 사용자 수 조회 (배치) - 성능 최적화
    */
-  async getRoleCountsBatch(roleIds: string[]): Promise<Map<string, number>> {
+  async getRoleCountsBatch(roleIds: string[]): Promise<Record<string, number>> {
     try {
       const userIdsMap = await this.userRoleRepo.findUserIdsByRoleIds(roleIds);
-      const userCounts = new Map<string, number>();
+      const userCounts: Record<string, number> = {};
 
       roleIds.forEach((roleId) => {
-        const roleIds = userIdsMap.get(roleId) || [];
-        userCounts.set(roleId, roleIds.length);
+        const userIds = userIdsMap[roleId] || [];
+        userCounts[roleId] = userIds.length;
       });
 
       return userCounts;
