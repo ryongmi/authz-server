@@ -5,7 +5,6 @@ import { TcpOperationResponse, TcpSearchResponse } from '@krgeobuk/core/interfac
 import type {
   PermissionSearchQuery,
   PermissionSearchResult,
-  PermissionDetail,
   CreatePermission,
 } from '@krgeobuk/permission/interfaces';
 import type {
@@ -16,7 +15,6 @@ import type {
 import { PermissionTcpPatterns } from '@krgeobuk/permission/tcp/patterns';
 import { Permission } from '@krgeobuk/shared/permission';
 
-import { PermissionEntity } from './entities/permission.entity.js';
 import { PermissionService } from './permission.service.js';
 
 /**
@@ -62,12 +60,12 @@ export class PermissionTcpController {
    * 권한 ID로 상세 정보 조회
    */
   @MessagePattern(PermissionTcpPatterns.FIND_BY_ID)
-  async findPermissionById(@Payload() data: TcpPermissionId): Promise<PermissionDetail | null> {
+  async findPermissionById(@Payload() data: TcpPermissionId): Promise<Permission | null> {
     this.logger.debug(`TCP permission detail request: ${data.permissionId}`);
 
     try {
-      const permission = await this.permissionService.getPermissionById(data.permissionId);
-      this.logger.debug(`TCP permission detail response: ${permission.action}`);
+      const permission = await this.permissionService.findById(data.permissionId);
+      this.logger.debug(`TCP permission findById response: ${permission?.action || 'not found'}`);
       return permission;
     } catch (error: unknown) {
       this.logger.debug('TCP permission not found or error occurred', {
@@ -166,7 +164,7 @@ export class PermissionTcpController {
    * 서비스 ID로 권한 목록 조회
    */
   @MessagePattern(PermissionTcpPatterns.FIND_BY_SERVICE_IDS)
-  async findPermissionsByServiceIds(@Payload() data: TcpMultiService): Promise<PermissionEntity[]> {
+  async findPermissionsByServiceIds(@Payload() data: TcpMultiService): Promise<Permission[]> {
     this.logger.debug('TCP permissions by services request', {
       serviceCount: data.serviceIds.length,
     });

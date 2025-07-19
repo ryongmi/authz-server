@@ -7,7 +7,6 @@ import { TcpRoleId, TcpMultiServiceIds, TcpRoleUpdate } from '@krgeobuk/role/tcp
 import { RoleTcpPatterns } from '@krgeobuk/role/tcp/patterns';
 import { Role } from '@krgeobuk/shared/role';
 
-import { RoleEntity } from './entities/role.entity.js';
 import { RoleService } from './role.service.js';
 
 /**
@@ -57,7 +56,7 @@ export class RoleTcpController {
 
     try {
       const role = await this.roleService.findById(data.roleId);
-      this.logger.debug(`TCP role detail response: ${role?.name || 'not found'}`);
+      this.logger.debug(`TCP role findById response: ${role?.name || 'not found'}`);
       return role;
     } catch (error: unknown) {
       this.logger.error('TCP role detail failed', {
@@ -159,7 +158,7 @@ export class RoleTcpController {
    * 서비스 ID로 역할 목록 조회
    */
   @MessagePattern(RoleTcpPatterns.FIND_BY_SERVICE_IDS)
-  async findRolesByServiceIds(@Payload() data: TcpMultiServiceIds): Promise<RoleEntity[]> {
+  async findRolesByServiceIds(@Payload() data: TcpMultiServiceIds): Promise<Role[]> {
     this.logger.debug('TCP roles by services request', {
       serviceCount: data.serviceIds.length,
     });
