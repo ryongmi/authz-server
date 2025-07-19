@@ -17,11 +17,11 @@ export class UserRoleRepository extends BaseRepository<UserRoleEntity> {
    */
   async findRoleIdsByUserId(userId: string): Promise<string[]> {
     const result = await this.createQueryBuilder('ur')
-      .select('ur.role_id')
+      .select('ur.role_id AS roleId')
       .where('ur.user_id = :userId', { userId })
       .getRawMany();
 
-    return result.map((row) => row.role_id);
+    return result.map((row) => row.roleId);
   }
 
   /**
@@ -29,32 +29,32 @@ export class UserRoleRepository extends BaseRepository<UserRoleEntity> {
    */
   async findUserIdsByRoleId(roleId: string): Promise<string[]> {
     const result = await this.createQueryBuilder('ur')
-      .select('ur.user_id')
+      .select('ur.user_id AS userId')
       .where('ur.role_id = :roleId', { roleId })
       .getRawMany();
 
-    return result.map((row) => row.user_id);
+    return result.map((row) => row.userId);
   }
 
   /**
    * 여러 사용자의 역할 ID 목록 조회 (배치 처리)
    */
-  async findRoleIdsByUserIds(userIds: string[]): Promise<Map<string, string[]>> {
+  async findRoleIdsByUserIds(userIds: string[]): Promise<Record<string, string[]>> {
     const result = await this.createQueryBuilder('ur')
-      .select(['ur.user_id', 'ur.role_id'])
+      .select(['ur.user_id AS userId', 'ur.role_id AS roleId'])
       .where('ur.user_id IN (:...userIds)', { userIds })
       .getRawMany();
 
-    const userRoleMap = new Map<string, string[]>();
+    const userRoleMap: Record<string, string[]> = {};
 
     result.forEach((row) => {
-      const userId = row.user_id;
-      const roleId = row.role_id;
+      const userId = row.userId;
+      const roleId = row.roleId;
 
-      if (!userRoleMap.has(userId)) {
-        userRoleMap.set(userId, []);
+      if (!userRoleMap[userId]) {
+        userRoleMap[userId] = [];
       }
-      userRoleMap.get(userId)!.push(roleId);
+      userRoleMap[userId].push(roleId);
     });
 
     return userRoleMap;
@@ -63,22 +63,22 @@ export class UserRoleRepository extends BaseRepository<UserRoleEntity> {
   /**
    * 여러 역할의 사용자 ID 목록 조회 (배치 처리)
    */
-  async findUserIdsByRoleIds(roleIds: string[]): Promise<Map<string, string[]>> {
+  async findUserIdsByRoleIds(roleIds: string[]): Promise<Record<string, string[]>> {
     const result = await this.createQueryBuilder('ur')
-      .select(['ur.role_id', 'ur.user_id'])
+      .select(['ur.role_id AS roleId', 'ur.user_id AS userId'])
       .where('ur.role_id IN (:...roleIds)', { roleIds })
       .getRawMany();
 
-    const roleUserMap = new Map<string, string[]>();
+    const roleUserMap: Record<string, string[]> = {};
 
     result.forEach((row) => {
-      const roleId = row.role_id;
-      const userId = row.user_id;
+      const roleId = row.roleId;
+      const userId = row.userId;
 
-      if (!roleUserMap.has(roleId)) {
-        roleUserMap.set(roleId, []);
+      if (!roleUserMap[roleId]) {
+        roleUserMap[roleId] = [];
       }
-      roleUserMap.get(roleId)!.push(userId);
+      roleUserMap[roleId].push(userId);
     });
 
     return roleUserMap;

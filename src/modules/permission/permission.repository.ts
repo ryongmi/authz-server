@@ -36,10 +36,10 @@ export class PermissionRepository extends BaseRepository<PermissionEntity> {
     const permissionAlias = 'permission';
 
     const qb = this.createQueryBuilder(permissionAlias).select([
-      `${permissionAlias}.id`,
-      `${permissionAlias}.action`,
-      `${permissionAlias}.description`,
-      `${permissionAlias}.service_id`,
+      `${permissionAlias}.id AS id`,
+      `${permissionAlias}.action AS action`,
+      `${permissionAlias}.description AS description`,
+      `${permissionAlias}.service_id AS serviceId`,
     ]);
 
     // 인덱스 활용을 위한 조건 순서 최적화
@@ -55,15 +55,7 @@ export class PermissionRepository extends BaseRepository<PermissionEntity> {
     qb.offset(skip).limit(limit);
 
     // 최적화: 별도 쿼리로 COUNT와 데이터 조회 분리하여 성능 향상
-    const [rows, total] = await Promise.all([qb.getRawMany(), qb.getCount()]);
-
-    // 타입 안전한 결과 매핑
-    const items: Partial<PermissionEntity>[] = rows.map((row) => ({
-      id: row[`${permissionAlias}_id`],
-      action: row[`${permissionAlias}_action`],
-      description: row[`${permissionAlias}_description`],
-      serviceId: row[`${permissionAlias}_service_id`],
-    }));
+    const [items, total] = await Promise.all([qb.getRawMany(), qb.getCount()]);
 
     const totalPages = Math.ceil(total / limit);
     const pageInfo = {

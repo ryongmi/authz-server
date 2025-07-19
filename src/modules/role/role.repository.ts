@@ -34,11 +34,11 @@ export class RoleRepository extends BaseRepository<RoleEntity> {
     const roleAlias = 'role';
 
     const qb = this.createQueryBuilder(roleAlias).select([
-      `${roleAlias}.id`,
-      `${roleAlias}.name`,
-      `${roleAlias}.description`,
-      `${roleAlias}.priority`,
-      `${roleAlias}.service_id`,
+      `${roleAlias}.id AS id`,
+      `${roleAlias}.name AS name`,
+      `${roleAlias}.description AS description`,
+      `${roleAlias}.priority AS priority`,
+      `${roleAlias}.service_id AS serviceId`,
     ]);
 
     // 검색 조건 적용
@@ -56,15 +56,7 @@ export class RoleRepository extends BaseRepository<RoleEntity> {
     qb.offset(skip).limit(limit);
 
     // 최적화: 별도 쿼리로 COUNT와 데이터 조회 분리하여 성능 향상
-    const [rows, total] = await Promise.all([qb.getRawMany(), qb.getCount()]);
-
-    const items: Partial<RoleEntity>[] = rows.map((row) => ({
-      id: row[`${roleAlias}_id`],
-      name: row[`${roleAlias}_name`],
-      description: row[`${roleAlias}_description`],
-      priority: row[`${roleAlias}_priority`],
-      serviceId: row[`${roleAlias}_service_id`],
-    }));
+    const [items, total] = await Promise.all([qb.getRawMany(), qb.getCount()]);
 
     const totalPages = Math.ceil(total / limit);
     const pageInfo = {

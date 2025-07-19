@@ -17,11 +17,11 @@ export class ServiceVisibleRoleRepository extends BaseRepository<ServiceVisibleR
    */
   async findRoleIdsByServiceId(serviceId: string): Promise<string[]> {
     const result = await this.createQueryBuilder('svr')
-      .select('svr.role_id')
+      .select('svr.role_id AS roleId')
       .where('svr.service_id = :serviceId', { serviceId })
       .getRawMany();
 
-    return result.map((row) => row.role_id);
+    return result.map((row) => row.roleId);
   }
 
   /**
@@ -29,32 +29,32 @@ export class ServiceVisibleRoleRepository extends BaseRepository<ServiceVisibleR
    */
   async findServiceIdsByRoleId(roleId: string): Promise<string[]> {
     const result = await this.createQueryBuilder('svr')
-      .select('svr.service_id')
+      .select('svr.service_id AS serviceId')
       .where('svr.role_id = :roleId', { roleId })
       .getRawMany();
 
-    return result.map((row) => row.service_id);
+    return result.map((row) => row.serviceId);
   }
 
   /**
    * 여러 서비스의 역할 ID 목록 조회 (배치 처리)
    */
-  async findRoleIdsByServiceIds(serviceIds: string[]): Promise<Map<string, string[]>> {
+  async findRoleIdsByServiceIds(serviceIds: string[]): Promise<Record<string, string[]>> {
     const result = await this.createQueryBuilder('svr')
-      .select(['svr.service_id', 'svr.role_id'])
+      .select(['svr.service_id AS serviceId', 'svr.role_id AS roleId'])
       .where('svr.service_id IN (:...serviceIds)', { serviceIds })
       .getRawMany();
 
-    const serviceRoleMap = new Map<string, string[]>();
+    const serviceRoleMap: Record<string, string[]> = {};
 
     result.forEach((row) => {
-      const serviceId = row.service_id;
-      const roleId = row.role_id;
+      const serviceId = row.serviceId;
+      const roleId = row.roleId;
 
-      if (!serviceRoleMap.has(serviceId)) {
-        serviceRoleMap.set(serviceId, []);
+      if (!serviceRoleMap[serviceId]) {
+        serviceRoleMap[serviceId] = [];
       }
-      serviceRoleMap.get(serviceId)!.push(roleId);
+      serviceRoleMap[serviceId].push(roleId);
     });
 
     return serviceRoleMap;
@@ -63,22 +63,22 @@ export class ServiceVisibleRoleRepository extends BaseRepository<ServiceVisibleR
   /**
    * 여러 역할의 서비스 ID 목록 조회 (배치 처리)
    */
-  async findServiceIdsByRoleIds(roleIds: string[]): Promise<Map<string, string[]>> {
+  async findServiceIdsByRoleIds(roleIds: string[]): Promise<Record<string, string[]>> {
     const result = await this.createQueryBuilder('svr')
-      .select(['svr.role_id', 'svr.service_id'])
+      .select(['svr.role_id AS roleId', 'svr.service_id AS serviceId'])
       .where('svr.role_id IN (:...roleIds)', { roleIds })
       .getRawMany();
 
-    const roleServiceMap = new Map<string, string[]>();
+    const roleServiceMap: Record<string, string[]> = {};
 
     result.forEach((row) => {
-      const roleId = row.role_id;
-      const serviceId = row.service_id;
+      const roleId = row.roleId;
+      const serviceId = row.serviceId;
 
-      if (!roleServiceMap.has(roleId)) {
-        roleServiceMap.set(roleId, []);
+      if (!roleServiceMap[roleId]) {
+        roleServiceMap[roleId] = [];
       }
-      roleServiceMap.get(roleId)!.push(serviceId);
+      roleServiceMap[roleId].push(serviceId);
     });
 
     return roleServiceMap;
