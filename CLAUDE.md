@@ -309,7 +309,7 @@ export class UserRoleService {
   }
 
   // 배치 조회 메서드
-  async getRoleIdsBatch(userIds: string[]): Promise<Map<string, string[]>> {
+  async getRoleIdsBatch(userIds: string[]): Promise<Record<string, string[]>> {
     try {
       return await this.userRoleRepo.findRoleIdsByUserIds(userIds);
     } catch (error: unknown) {
@@ -321,7 +321,7 @@ export class UserRoleService {
     }
   }
 
-  async getUserIdsBatch(roleIds: string[]): Promise<Map<string, string[]>> {
+  async getUserIdsBatch(roleIds: string[]): Promise<Record<string, string[]>> {
     try {
       return await this.userRoleRepo.findUserIdsByRoleIds(roleIds);
     } catch (error: unknown) {
@@ -455,10 +455,10 @@ async hasUsersForRole(roleId: string): Promise<boolean> {
 }
 
 // 🔥 선택적 최적화: 카운트 전용 메서드 (메모리 효율성)
-async getUserCountsBatch(roleIds: string[]): Promise<Map<string, number>> {
+async getUserCountsBatch(roleIds: string[]): Promise<Record<string, number>> {
   try {
     const userIdsMap = await this.userRoleRepo.findUserIdsByRoleIds(roleIds);
-    const userCounts = new Map<string, number>();
+    const userCounts: Record<string, number> = {};
 
     roleIds.forEach(roleId => {
       const userIds = userIdsMap.get(roleId) || [];
@@ -1088,7 +1088,7 @@ export class RolePermissionService {
     // 관계 존재 확인
   }
 
-  async getPermissionIdsBatch(roleIds: string[]): Promise<Map<string, string[]>> {
+  async getPermissionIdsBatch(roleIds: string[]): Promise<Record<string, string[]>> {
     // 배치 처리 조회
   }
 
@@ -1580,22 +1580,22 @@ export class UserRoleRepository extends BaseRepository<UserRoleEntity> {
 /**
  * 여러 사용자의 역할 ID 목록 조회 (배치 처리)
  */
-async findRoleIdsByUserIds(userIds: string[]): Promise<Map<string, string[]>> {
+async findRoleIdsByUserIds(userIds: string[]): Promise<Record<string, string[]>> {
   const result = await this.createQueryBuilder('ur')
     .select(['ur.userId', 'ur.roleId'])
     .where('ur.userId IN (:...userIds)', { userIds })
     .getRawMany();
 
-  const userRoleMap = new Map<string, string[]>();
+  const userRoleMap: Record<string, string[]> = {};
 
   result.forEach((row) => {
     const userId = row.ur_userId;
     const roleId = row.ur_roleId;
 
-    if (!userRoleMap.has(userId)) {
-      userRoleMap.set(userId, []);
+    if (!userRoleMap[userId]) {
+      userRoleMap[userId] = [];
     }
-    userRoleMap.get(userId)!.push(roleId);
+    userRoleMap[userId].push(roleId);
   });
 
   return userRoleMap;
@@ -1679,7 +1679,7 @@ export class UserRoleService {
   /**
    * 여러 사용자의 역할 ID 목록 조회 (배치)
    */
-  async getRoleIdsBatch(userIds: string[]): Promise<Map<string, string[]>> {
+  async getRoleIdsBatch(userIds: string[]): Promise<Record<string, string[]>> {
     try {
       return await this.userRoleRepo.findRoleIdsByUserIds(userIds);
     } catch (error: unknown) {
