@@ -9,6 +9,7 @@ import {
   TcpGetUserPermissions,
 } from '@krgeobuk/authorization/tcp/interfaces';
 import { PermissionCheckResponse, RoleCheckResponse } from '@krgeobuk/shared/authorization';
+import type { Service } from '@krgeobuk/shared/service';
 
 import { AuthorizationService } from './authorization.service.js';
 
@@ -136,6 +137,34 @@ export class AuthorizationTcpController {
         serviceId: data.serviceId,
       });
       throw error;
+    }
+  }
+
+  // ==================== 사용 가능한 서비스 조회 패턴 ====================
+
+  @MessagePattern(AuthorizationTcpPatterns.GET_AVAILABLE_SERVICES)
+  async getAvailableServices(@Payload() data: { userId: string }): Promise<Service[]> {
+    try {
+      this.logger.debug('TCP available services requested', {
+        userId: data.userId,
+      });
+
+      const availableServices = await this.authorizationService.getAvailableServices(data.userId);
+
+      this.logger.debug('TCP available services retrieved', {
+        userId: data.userId,
+        serviceCount: availableServices.length,
+      });
+
+      return availableServices;
+    } catch (error: unknown) {
+      this.logger.error('TCP available services retrieval failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId: data.userId,
+      });
+
+      // 에러 발생 시 빈 배열 반환 (fallback)
+      return [];
     }
   }
 }

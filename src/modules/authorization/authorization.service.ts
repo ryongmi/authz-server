@@ -1,8 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices';
 
 import { DataSource } from 'typeorm';
+import { firstValueFrom } from 'rxjs';
 
 import { CheckPermission, CheckRole } from '@krgeobuk/authorization/interfaces';
+import type { Service } from '@krgeobuk/shared/service';
+import { ServiceTcpPatterns } from '@krgeobuk/service/tcp';
 
 import { UserRoleService } from '@modules/user-role/index.js';
 import { RolePermissionService } from '@modules/role-permission/index.js';
@@ -20,7 +24,8 @@ export class AuthorizationService {
     private readonly rolePermissionService: RolePermissionService,
     private readonly serviceVisibleRoleService: ServiceVisibleRoleService,
     private readonly permissionService: PermissionService,
-    private readonly roleService: RoleService
+    private readonly roleService: RoleService,
+    @Inject('PORTAL_SERVICE') private readonly portalClient: ClientProxy
   ) {}
 
   // ==================== PUBLIC METHODS ====================
@@ -642,6 +647,214 @@ export class AuthorizationService {
 
       return false;
     }
+  }
+
+  /**
+   * 사용자가 접근 가능한 서비스 목록 조회
+   * 서비스 가시성 규칙을 적용하여 필터링 (배치 처리로 성능 최적화)
+   *
+   * @param userId - 사용자 ID
+   * @returns 접근 가능한 서비스 목록
+   */
+  async getAvailableServices(userId: string): Promise<Service[]> {
+    try {
+      this.logger.debug('Available services requested', { userId });
+
+      // 1. 사용자의 역할 조회
+      const userRoles = await this.getUserRoles(userId);
+
+      // 2. portal-server에서 모든 서비스 목록 조회 (TCP 통신)
+      const allServices = await this.getAllServices();
+
+      // 3. 서비스 가시성 규칙 적용 (배치 처리로 최적화)
+      const availableServices = await this.filterServicesByVisibilityOptimized(
+        allServices,
+        userRoles
+      );
+
+      this.logger.debug('Available services retrieved', {
+        userId,
+        userRoleCount: userRoles.length,
+        totalServices: allServices.length,
+        availableServices: availableServices.length,
+        serviceDetails: availableServices.map((s) => ({
+          id: s.id,
+          name: s.name,
+          isVisible: s.isVisible,
+          isVisibleByRole: s.isVisibleByRole,
+        })),
+      });
+
+      return availableServices;
+    } catch (error: unknown) {
+      this.logger.error('Available services retrieval failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId,
+      });
+
+      // 에러 발생 시 빈 배열 반환 (fallback)
+      return [];
+    }
+  }
+
+  // ==================== PRIVATE HELPER METHODS ====================
+
+  /**
+   * 모든 서비스 목록 조회 (portal-server TCP 통신)
+   */
+  private async getAllServices(): Promise<Service[]> {
+    try {
+      if (!this.portalClient) {
+        this.logger.warn('Portal service client not available, using fallback data');
+        return [];
+      }
+
+      const services = await firstValueFrom<Service[]>(
+        this.portalClient.send(ServiceTcpPatterns.FIND_ALL, {})
+      );
+
+      this.logger.debug('Portal service에서 서비스 목록 조회 성공', {
+        serviceCount: services?.length || 0,
+      });
+
+      return services || [];
+    } catch (error: unknown) {
+      this.logger.warn('portal-server에서 서비스 목록 조회 실패, 임시 데이터 사용', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+
+      // 폴백: 임시 데이터 반환
+      return [];
+    }
+  }
+
+  /**
+   * 서비스 가시성 규칙에 따라 서비스 목록 필터링 (배치 처리 최적화)
+   * N+1 쿼리 문제를 해결하여 성능 대폭 향상
+   *
+   * @param services - 전체 서비스 목록
+   * @param userRoles - 사용자 역할 목록
+   * @returns 필터링된 서비스 목록
+   */
+  private async filterServicesByVisibilityOptimized(
+    services: Service[],
+    userRoles: string[]
+  ): Promise<Service[]> {
+    try {
+      // 1. 권한 기반 서비스 ID 목록 추출
+      const roleBasedServiceIds = services
+        .filter((s) => s.isVisible && s.isVisibleByRole && s.id)
+        .map((s) => s.id!)
+        .filter(Boolean);
+
+      // 2. 배치 조회: 권한 기반 서비스들의 가시성 역할을 한 번에 조회
+      let serviceRoleMap: Record<string, string[]> = {};
+      if (roleBasedServiceIds.length > 0) {
+        serviceRoleMap = await this.serviceVisibleRoleService.getRoleIdsBatch(roleBasedServiceIds);
+      }
+
+      // 3. 서비스 필터링 (단일 루프로 처리)
+      const availableServices: Service[] = [];
+
+      for (const service of services) {
+        // 비공개 서비스 제외 (isVisible = false)
+        if (!service.isVisible) {
+          continue;
+        }
+
+        // 전체 공개 서비스 (isVisible = true && isVisibleByRole = false)
+        if (service.isVisible && !service.isVisibleByRole) {
+          availableServices.push(service);
+          continue;
+        }
+
+        // 권한 기반 서비스 (isVisible = true && isVisibleByRole = true)
+        if (service.isVisible && service.isVisibleByRole && service.id) {
+          // 사용자에게 역할이 없으면 권한 기반 서비스는 접근 불가
+          if (userRoles.length === 0) {
+            continue;
+          }
+
+          // 배치 조회 결과에서 서비스 가시성 역할 확인
+          const serviceVisibleRoles = serviceRoleMap[service.id] || [];
+
+          // 서비스에 가시성 역할이 설정되어 있지 않으면 접근 불가
+          if (serviceVisibleRoles.length === 0) {
+            continue;
+          }
+
+          // 사용자 역할 중 하나라도 서비스 가시성 역할에 포함되어 있으면 접근 가능
+          const hasRequiredRole = userRoles.some((roleId) => serviceVisibleRoles.includes(roleId));
+
+          if (hasRequiredRole) {
+            availableServices.push(service);
+          }
+        }
+      }
+
+      this.logger.debug('Service visibility filtering completed', {
+        totalServices: services.length,
+        roleBasedServices: roleBasedServiceIds.length,
+        availableServices: availableServices.length,
+        batchQueryUsed: roleBasedServiceIds.length > 0,
+      });
+
+      return availableServices;
+    } catch (error: unknown) {
+      this.logger.error('Optimized service visibility filtering failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        serviceCount: services.length,
+        userRoleCount: userRoles.length,
+      });
+
+      // 에러 발생 시 기본 로직으로 폴백
+      this.logger.warn('Falling back to basic visibility filtering');
+      return this.filterServicesByVisibilityBasic(services, userRoles);
+    }
+  }
+
+  /**
+   * 기본 서비스 가시성 필터링 (폴백용)
+   * 배치 처리 실패 시 사용하는 안전한 폴백 로직
+   *
+   * @param services - 전체 서비스 목록
+   * @param userRoles - 사용자 역할 목록
+   * @returns 필터링된 서비스 목록
+   */
+  private filterServicesByVisibilityBasic(services: Service[], userRoles: string[]): Service[] {
+    const availableServices: Service[] = [];
+
+    for (const service of services) {
+      // 비공개 서비스 제외 (isVisible = false)
+      if (!service.isVisible) {
+        continue;
+      }
+
+      // 전체 공개 서비스 (isVisible = true && isVisibleByRole = false)
+      if (service.isVisible && !service.isVisibleByRole) {
+        availableServices.push(service);
+        continue;
+      }
+
+      // 권한 기반 서비스 (isVisible = true && isVisibleByRole = true)
+      if (service.isVisible && service.isVisibleByRole) {
+        // 사용자에게 역할이 없으면 권한 기반 서비스는 접근 불가
+        if (userRoles.length === 0) {
+          continue;
+        }
+
+        // 폴백: 임시로 모든 역할 사용자에게 접근 허용
+        // TODO: 실제 service-visible-role 확인 로직으로 교체
+        availableServices.push(service);
+      }
+    }
+
+    this.logger.debug('Basic service visibility filtering completed', {
+      totalServices: services.length,
+      availableServices: availableServices.length,
+    });
+
+    return availableServices;
   }
 }
 
