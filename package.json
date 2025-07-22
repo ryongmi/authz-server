@@ -26,8 +26,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
-    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand"
   },
   "dependencies": {
     "@krgeobuk/auth": "^1.0.0",
@@ -37,15 +36,15 @@
     "@krgeobuk/jwt": "^1.0.0",
     "@krgeobuk/msa-commons": "^1.0.0",
     "@krgeobuk/oauth": "^1.0.0",
-    "@krgeobuk/shared": "^1.0.0",
-    "@krgeobuk/swagger": "^1.0.0",
     "@krgeobuk/permission": "^1.0.0",
     "@krgeobuk/role": "^1.0.0",
-    "@krgeobuk/service": "^1.0.0",
     "@krgeobuk/role-permission": "^1.0.0",
-    "@krgeobuk/user-role": "^1.0.0",
+    "@krgeobuk/service": "^1.0.0",
     "@krgeobuk/service-visible-role": "^1.0.0",
+    "@krgeobuk/shared": "^1.0.0",
+    "@krgeobuk/swagger": "^1.0.0",
     "@krgeobuk/user": "^1.0.0",
+    "@krgeobuk/user-role": "^1.0.0",
     "@nestjs/common": "^10.0.0",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^10.0.0",
@@ -98,22 +97,5 @@
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.32.1 || ^9.0.0"
-  },
-  "jest": {
-    "moduleFileExtensions": [
-      "js",
-      "json",
-      "ts"
-    ],
-    "rootDir": "src",
-    "testRegex": ".*\\.spec\\.ts$",
-    "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
-    },
-    "collectCoverageFrom": [
-      "**/*.(t|j)s"
-    ],
-    "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
   }
 }

@@ -1,14 +1,14 @@
 {
   "extends": "@krgeobuk/tsconfig/nest",
   "compilerOptions": {
-    "noEmit": false,
     "outDir": "./dist",
     // 프로젝트별로 필요시 오버라이드
     "baseUrl": "./",
     // 프로젝트별로 필요시 오버라이드
     "types": [
       "node",
-      "express"
+      "express",
+      "jest"
     ],
     "typeRoots": [
       "node_modules/@types",
