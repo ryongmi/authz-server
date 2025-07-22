@@ -142,7 +142,7 @@ export class AuthorizationTcpController {
 
   // ==================== 사용 가능한 서비스 조회 패턴 ====================
 
-  @MessagePattern('authorization.get-available-services')
+  @MessagePattern(AuthorizationTcpPatterns.GET_AVAILABLE_SERVICES)
   async getAvailableServices(@Payload() data: { userId: string }): Promise<Service[]> {
     try {
       this.logger.debug('TCP available services requested', {
