@@ -710,7 +710,7 @@ export class AuthorizationService {
       }
 
       const services = await firstValueFrom<Service[]>(
-        this.portalClient.send(ServiceTcpPatterns.SEARCH, {})
+        this.portalClient.send(ServiceTcpPatterns.FIND_ALL, {})
       );
 
       this.logger.debug('Portal service에서 서비스 목록 조회 성공', {
