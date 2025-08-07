@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { AccessTokenGuard } from '@krgeobuk/jwt/guards';
-
 import type { PaginatedResult } from '@krgeobuk/core/interfaces';
 import type {
   PermissionSearchQuery,
@@ -21,7 +20,7 @@ describe('PermissionController', () => {
 
   // 테스트 데이터
   const mockJwtPayload: JwtPayload = {
-    id: 'user-123',
+    sub: 'user-123',
     tokenData: {
       email: 'admin@test.com',
       roles: ['admin'],
@@ -75,11 +74,11 @@ describe('PermissionController', () => {
         },
       ],
     })
-    .overrideGuard(AccessTokenGuard)
-    .useValue({
-      canActivate: jest.fn().mockReturnValue(true),
-    })
-    .compile();
+      .overrideGuard(AccessTokenGuard)
+      .useValue({
+        canActivate: jest.fn().mockReturnValue(true),
+      })
+      .compile();
 
     controller = module.get<PermissionController>(PermissionController);
     permissionService = module.get(PermissionService);
