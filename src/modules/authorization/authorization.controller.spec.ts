@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { AccessTokenGuard } from '@krgeobuk/jwt/guards';
-
+import type { AuthenticatedJwt } from '@krgeobuk/jwt/interfaces';
 import { CheckPermissionDto, CheckRoleDto } from '@krgeobuk/authorization/dtos';
 import { AuthorizationException } from '@krgeobuk/authorization/exception';
 import { UserIdParamsDto } from '@krgeobuk/shared/user';
@@ -30,6 +30,34 @@ describe('AuthorizationController', () => {
     userId: 'user-123',
   };
 
+  // Mock JWT 객체들
+  const mockUserJwt: AuthenticatedJwt = {
+    userId: 'user-123',
+    tokenData: {
+      sub: 'user-123',
+    },
+    iat: 1234567890,
+    exp: 1234567890 + 3600,
+  };
+
+  const mockAdminJwt: AuthenticatedJwt = {
+    userId: 'admin-456',
+    tokenData: {
+      sub: 'admin-456',
+    },
+    iat: 1234567890,
+    exp: 1234567890 + 3600,
+  };
+
+  const mockOtherUserJwt: AuthenticatedJwt = {
+    userId: 'other-user-789',
+    tokenData: {
+      sub: 'other-user-789',
+    },
+    iat: 1234567890,
+    exp: 1234567890 + 3600,
+  };
+
   const mockPermissions = ['permission-1', 'permission-2', 'permission-3'];
   const mockRoles = ['role-1', 'role-2'];
 
@@ -50,15 +78,14 @@ describe('AuthorizationController', () => {
         },
       ],
     })
-    .overrideGuard(AccessTokenGuard)
-    .useValue({
-      canActivate: jest.fn().mockReturnValue(true),
-    })
-    .compile();
+      .overrideGuard(AccessTokenGuard)
+      .useValue({
+        canActivate: jest.fn().mockReturnValue(true),
+      })
+      .compile();
 
     controller = module.get<AuthorizationController>(AuthorizationController);
     authorizationService = module.get(AuthorizationService);
-
   });
 
   afterEach(() => {
@@ -71,7 +98,7 @@ describe('AuthorizationController', () => {
       authorizationService.checkUserPermission.mockResolvedValue(true);
 
       // When
-      const result = await controller.checkPermission(mockCheckPermissionDto);
+      const result = await controller.checkPermission(mockCheckPermissionDto, mockUserJwt);
 
       // Then
       expect(result).toEqual({ hasPermission: true });
@@ -83,7 +110,7 @@ describe('AuthorizationController', () => {
       authorizationService.checkUserPermission.mockResolvedValue(false);
 
       // When
-      const result = await controller.checkPermission(mockCheckPermissionDto);
+      const result = await controller.checkPermission(mockCheckPermissionDto, mockUserJwt);
 
       // Then
       expect(result).toEqual({ hasPermission: false });
@@ -99,11 +126,13 @@ describe('AuthorizationController', () => {
       authorizationService.checkUserPermission.mockResolvedValue(true);
 
       // When
-      const result = await controller.checkPermission(permissionWithoutService);
+      const result = await controller.checkPermission(permissionWithoutService, mockUserJwt);
 
       // Then
       expect(result).toEqual({ hasPermission: true });
-      expect(authorizationService.checkUserPermission).toHaveBeenCalledWith(permissionWithoutService);
+      expect(authorizationService.checkUserPermission).toHaveBeenCalledWith(
+        permissionWithoutService
+      );
     });
 
     it('권한 확인 실패 시 에러를 전파해야 함', async () => {
@@ -112,7 +141,7 @@ describe('AuthorizationController', () => {
       authorizationService.checkUserPermission.mockRejectedValue(error);
 
       // When & Then
-      await expect(controller.checkPermission(mockCheckPermissionDto)).rejects.toThrow(
+      await expect(controller.checkPermission(mockCheckPermissionDto, mockUserJwt)).rejects.toThrow(
         AuthorizationException.serviceUnavailable()
       );
       expect(authorizationService.checkUserPermission).toHaveBeenCalledWith(mockCheckPermissionDto);
@@ -125,7 +154,7 @@ describe('AuthorizationController', () => {
       authorizationService.checkUserRole.mockResolvedValue(true);
 
       // When
-      const result = await controller.checkRole(mockCheckRoleDto);
+      const result = await controller.checkRole(mockCheckRoleDto, mockUserJwt);
 
       // Then
       expect(result).toEqual({ hasRole: true });
@@ -137,7 +166,7 @@ describe('AuthorizationController', () => {
       authorizationService.checkUserRole.mockResolvedValue(false);
 
       // When
-      const result = await controller.checkRole(mockCheckRoleDto);
+      const result = await controller.checkRole(mockCheckRoleDto, mockUserJwt);
 
       // Then
       expect(result).toEqual({ hasRole: false });
@@ -153,7 +182,7 @@ describe('AuthorizationController', () => {
       authorizationService.checkUserRole.mockResolvedValue(true);
 
       // When
-      const result = await controller.checkRole(roleWithoutService);
+      const result = await controller.checkRole(roleWithoutService, mockUserJwt);
 
       // Then
       expect(result).toEqual({ hasRole: true });
@@ -166,7 +195,7 @@ describe('AuthorizationController', () => {
       authorizationService.checkUserRole.mockRejectedValue(error);
 
       // When & Then
-      await expect(controller.checkRole(mockCheckRoleDto)).rejects.toThrow(
+      await expect(controller.checkRole(mockCheckRoleDto, mockUserJwt)).rejects.toThrow(
         AuthorizationException.serviceUnavailable()
       );
       expect(authorizationService.checkUserRole).toHaveBeenCalledWith(mockCheckRoleDto);
@@ -253,4 +282,3 @@ describe('AuthorizationController', () => {
     expect(controller).toBeDefined();
   });
 });
-

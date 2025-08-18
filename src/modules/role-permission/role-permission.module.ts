@@ -14,4 +14,3 @@ import { RolePermissionService } from './role-permission.service.js';
   exports: [RolePermissionService],
 })
 export class RolePermissionModule {}
-

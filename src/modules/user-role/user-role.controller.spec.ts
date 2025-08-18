@@ -68,11 +68,11 @@ describe('UserRoleController', () => {
         },
       ],
     })
-    .overrideGuard(AccessTokenGuard)
-    .useValue({
-      canActivate: jest.fn().mockReturnValue(true),
-    })
-    .compile();
+      .overrideGuard(AccessTokenGuard)
+      .useValue({
+        canActivate: jest.fn().mockReturnValue(true),
+      })
+      .compile();
 
     controller = module.get<UserRoleController>(UserRoleController);
     userRoleService = module.get(UserRoleService);
@@ -325,9 +325,9 @@ describe('UserRoleController', () => {
       userRoleService.replaceUserRoles.mockRejectedValue(error);
 
       // When & Then
-      await expect(
-        controller.replaceUserRoles(mockUserIdParams, mockRoleIdsDto)
-      ).rejects.toThrow(UserRoleException.replaceError());
+      await expect(controller.replaceUserRoles(mockUserIdParams, mockRoleIdsDto)).rejects.toThrow(
+        UserRoleException.replaceError()
+      );
       expect(userRoleService.replaceUserRoles).toHaveBeenCalledWith({
         userId: 'user-123',
         roleIds: ['role-1', 'role-2', 'role-3'],
@@ -339,4 +339,3 @@ describe('UserRoleController', () => {
     expect(controller).toBeDefined();
   });
 });
-

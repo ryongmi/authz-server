@@ -21,8 +21,10 @@ import {
 } from '@krgeobuk/swagger/decorators';
 import { AccessTokenGuard } from '@krgeobuk/jwt/guards';
 import { AuthorizationGuard } from '@krgeobuk/authorization/guards';
-import { RequireRole } from '@krgeobuk/authorization/decorators';
+import { RequireAccess } from '@krgeobuk/authorization/decorators';
+import { AUTHZ_PERMISSIONS } from '@krgeobuk/authorization/constants';
 import { Serialize } from '@krgeobuk/core/decorators';
+import { SERVICE_CONSTANTS, GLOBAL_ROLES } from '@krgeobuk/core/constants';
 import { ServiceVisibleRoleParamsDto } from '@krgeobuk/shared/service-visible-role';
 import { ServiceIdParamsDto } from '@krgeobuk/shared/service';
 import { RoleIdParamsDto } from '@krgeobuk/shared/role';
@@ -63,7 +65,12 @@ export class ServiceVisibleRoleController {
     status: ServiceVisibleRoleError.FETCH_ERROR.statusCode,
     description: ServiceVisibleRoleError.FETCH_ERROR.message,
   })
-  @RequireRole('superAdmin')
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.SERVICE_VISIBLE_ROLE_MANAGE],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     ...ServiceVisibleRoleResponse.FETCH_SUCCESS,
   })
@@ -92,7 +99,12 @@ export class ServiceVisibleRoleController {
     status: ServiceVisibleRoleError.FETCH_ERROR.statusCode,
     description: ServiceVisibleRoleError.FETCH_ERROR.message,
   })
-  @RequireRole('superAdmin')
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.SERVICE_VISIBLE_ROLE_MANAGE],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     ...ServiceVisibleRoleResponse.FETCH_SUCCESS,
   })
@@ -126,7 +138,12 @@ export class ServiceVisibleRoleController {
     status: ServiceVisibleRoleError.FETCH_ERROR.statusCode,
     description: ServiceVisibleRoleError.FETCH_ERROR.message,
   })
-  @RequireRole('superAdmin')
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.SERVICE_VISIBLE_ROLE_MANAGE],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     ...ServiceVisibleRoleResponse.FETCH_SUCCESS,
   })
@@ -168,7 +185,12 @@ export class ServiceVisibleRoleController {
     status: ServiceVisibleRoleError.SERVICE_VISIBLE_ROLE_ALREADY_EXISTS.statusCode,
     description: ServiceVisibleRoleError.SERVICE_VISIBLE_ROLE_ALREADY_EXISTS.message,
   })
-  @RequireRole('superAdmin')
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.SERVICE_VISIBLE_ROLE_MANAGE],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     ...ServiceVisibleRoleResponse.ASSIGN_SUCCESS,
   })
@@ -206,7 +228,12 @@ export class ServiceVisibleRoleController {
     status: ServiceVisibleRoleError.SERVICE_VISIBLE_ROLE_NOT_FOUND.statusCode,
     description: ServiceVisibleRoleError.SERVICE_VISIBLE_ROLE_NOT_FOUND.message,
   })
-  @RequireRole('superAdmin')
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.SERVICE_VISIBLE_ROLE_MANAGE],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     ...ServiceVisibleRoleResponse.REVOKE_SUCCESS,
   })
@@ -240,7 +267,12 @@ export class ServiceVisibleRoleController {
     status: ServiceVisibleRoleError.ASSIGN_MULTIPLE_ERROR.statusCode,
     description: ServiceVisibleRoleError.ASSIGN_MULTIPLE_ERROR.message,
   })
-  @RequireRole('superAdmin')
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.SERVICE_VISIBLE_ROLE_MANAGE],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     ...ServiceVisibleRoleResponse.ASSIGN_MULTIPLE_SUCCESS,
   })
@@ -278,7 +310,12 @@ export class ServiceVisibleRoleController {
     status: ServiceVisibleRoleError.REVOKE_MULTIPLE_ERROR.statusCode,
     description: ServiceVisibleRoleError.REVOKE_MULTIPLE_ERROR.message,
   })
-  @RequireRole('superAdmin')
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.SERVICE_VISIBLE_ROLE_MANAGE],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     ...ServiceVisibleRoleResponse.REVOKE_MULTIPLE_SUCCESS,
   })
@@ -316,7 +353,12 @@ export class ServiceVisibleRoleController {
     status: ServiceVisibleRoleError.REPLACE_ERROR.statusCode,
     description: ServiceVisibleRoleError.REPLACE_ERROR.message,
   })
-  @RequireRole('superAdmin')
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.SERVICE_VISIBLE_ROLE_MANAGE],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     ...ServiceVisibleRoleResponse.REPLACE_SUCCESS,
   })
@@ -330,4 +372,3 @@ export class ServiceVisibleRoleController {
     });
   }
 }
-

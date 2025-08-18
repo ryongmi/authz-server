@@ -74,11 +74,11 @@ describe('ServiceVisibleRoleController', () => {
         },
       ],
     })
-    .overrideGuard(AccessTokenGuard)
-    .useValue({
-      canActivate: jest.fn().mockReturnValue(true),
-    })
-    .compile();
+      .overrideGuard(AccessTokenGuard)
+      .useValue({
+        canActivate: jest.fn().mockReturnValue(true),
+      })
+      .compile();
 
     controller = module.get<ServiceVisibleRoleController>(ServiceVisibleRoleController);
     mockServiceVisibleRoleService = module.get(ServiceVisibleRoleService);
@@ -160,7 +160,9 @@ describe('ServiceVisibleRoleController', () => {
 
       // Then
       expect(result).toBe(true);
-      expect(mockServiceVisibleRoleService.exists).toHaveBeenCalledWith(mockServiceVisibleRoleParams);
+      expect(mockServiceVisibleRoleService.exists).toHaveBeenCalledWith(
+        mockServiceVisibleRoleParams
+      );
       expect(mockServiceVisibleRoleService.exists).toHaveBeenCalledTimes(1);
     });
 
@@ -173,7 +175,9 @@ describe('ServiceVisibleRoleController', () => {
 
       // Then
       expect(result).toBe(false);
-      expect(mockServiceVisibleRoleService.exists).toHaveBeenCalledWith(mockServiceVisibleRoleParams);
+      expect(mockServiceVisibleRoleService.exists).toHaveBeenCalledWith(
+        mockServiceVisibleRoleParams
+      );
     });
 
     it('서비스 에러 시 예외가 전파되어야 함', async () => {
@@ -185,7 +189,9 @@ describe('ServiceVisibleRoleController', () => {
       await expect(
         controller.checkServiceVisibleRoleExists(mockServiceVisibleRoleParams)
       ).rejects.toThrow(ServiceVisibleRoleException.fetchError());
-      expect(mockServiceVisibleRoleService.exists).toHaveBeenCalledWith(mockServiceVisibleRoleParams);
+      expect(mockServiceVisibleRoleService.exists).toHaveBeenCalledWith(
+        mockServiceVisibleRoleParams
+      );
     });
   });
 
@@ -284,7 +290,9 @@ describe('ServiceVisibleRoleController', () => {
   describe('assignMultipleRoles', () => {
     it('여러 역할 할당을 성공적으로 수행해야 함', async () => {
       // Given
-      mockServiceVisibleRoleService.assignMultipleRoles.mockResolvedValue(mockServiceVisibleRoleBatchResult);
+      mockServiceVisibleRoleService.assignMultipleRoles.mockResolvedValue(
+        mockServiceVisibleRoleBatchResult
+      );
 
       // When
       await controller.assignMultipleRoles(mockServiceIdParams, mockRoleIdsDto);
@@ -315,7 +323,9 @@ describe('ServiceVisibleRoleController', () => {
     it('빈 역할 목록으로 배치 할당을 수행해야 함', async () => {
       // Given
       const emptyRolesDto: RoleIdsDto = { roleIds: [] };
-      mockServiceVisibleRoleService.assignMultipleRoles.mockResolvedValue(mockServiceVisibleRoleBatchResult);
+      mockServiceVisibleRoleService.assignMultipleRoles.mockResolvedValue(
+        mockServiceVisibleRoleBatchResult
+      );
 
       // When
       await controller.assignMultipleRoles(mockServiceIdParams, emptyRolesDto);
@@ -448,7 +458,9 @@ describe('ServiceVisibleRoleController', () => {
       mockServiceVisibleRoleService.exists.mockResolvedValue(false);
       mockServiceVisibleRoleService.assignServiceVisibleRole.mockResolvedValue(undefined);
       mockServiceVisibleRoleService.revokeServiceVisibleRole.mockResolvedValue(undefined);
-      mockServiceVisibleRoleService.assignMultipleRoles.mockResolvedValue(mockServiceVisibleRoleBatchResult);
+      mockServiceVisibleRoleService.assignMultipleRoles.mockResolvedValue(
+        mockServiceVisibleRoleBatchResult
+      );
       mockServiceVisibleRoleService.revokeMultipleRoles.mockResolvedValue(undefined);
       mockServiceVisibleRoleService.replaceServiceRoles.mockResolvedValue(undefined);
 
@@ -460,7 +472,9 @@ describe('ServiceVisibleRoleController', () => {
       expect(mockServiceVisibleRoleService.getServiceIds).toHaveBeenCalledWith(mockRoleId);
 
       await controller.checkServiceVisibleRoleExists(mockServiceVisibleRoleParams);
-      expect(mockServiceVisibleRoleService.exists).toHaveBeenCalledWith(mockServiceVisibleRoleParams);
+      expect(mockServiceVisibleRoleService.exists).toHaveBeenCalledWith(
+        mockServiceVisibleRoleParams
+      );
 
       await controller.assignServiceVisibleRole(mockServiceVisibleRoleParams);
       expect(mockServiceVisibleRoleService.assignServiceVisibleRole).toHaveBeenCalledWith(
@@ -509,4 +523,3 @@ describe('ServiceVisibleRoleController', () => {
     });
   });
 });
-

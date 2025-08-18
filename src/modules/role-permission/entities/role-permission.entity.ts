@@ -11,4 +11,3 @@ export class RolePermissionEntity {
   @PrimaryColumn({ type: 'uuid' })
   permissionId!: string;
 }
-

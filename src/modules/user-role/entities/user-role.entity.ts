@@ -11,4 +11,3 @@ export class UserRoleEntity {
   @PrimaryColumn({ type: 'uuid' })
   roleId!: string;
 }
-

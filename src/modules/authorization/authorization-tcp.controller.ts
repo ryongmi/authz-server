@@ -7,7 +7,7 @@ import {
   TcpCheckRole,
   TcpGetUserRoles,
   TcpGetUserPermissions,
-} from '@krgeobuk/authorization/tcp/interfaces';
+} from '@krgeobuk/authorization/tcp';
 import { PermissionCheckResponse, RoleCheckResponse } from '@krgeobuk/shared/authorization';
 import type { Service } from '@krgeobuk/shared/service';
 
@@ -168,4 +168,3 @@ export class AuthorizationTcpController {
     }
   }
 }
-

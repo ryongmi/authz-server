@@ -530,9 +530,7 @@ describe('AuthorizationService', () => {
     it('포털 서비스 통신 실패 시 빈 배열을 반환해야 함', async () => {
       // Given
       jest.spyOn(service, 'getUserRoles').mockResolvedValue(['role-1']);
-      portalClient.send.mockReturnValue(
-        throwError(() => new Error('Portal service unavailable'))
-      );
+      portalClient.send.mockReturnValue(throwError(() => new Error('Portal service unavailable')));
 
       // When
       const result = await service.getAvailableServices(mockUserId);
@@ -550,4 +548,3 @@ describe('AuthorizationService', () => {
     expect(service).toBeDefined();
   });
 });
-

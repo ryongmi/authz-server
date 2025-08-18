@@ -315,7 +315,9 @@ describe('ServiceVisibleRoleTcpController', () => {
   describe('assignMultipleRoles', () => {
     it('TCP 여러 역할 가시화 할당 요청을 처리해야 함', async () => {
       // Given
-      serviceVisibleRoleService.assignMultipleRoles.mockResolvedValue(mockServiceVisibleRoleBatchResult);
+      serviceVisibleRoleService.assignMultipleRoles.mockResolvedValue(
+        mockServiceVisibleRoleBatchResult
+      );
 
       // When
       const result = await controller.assignMultipleRoles(mockTcpServiceRoleBatch);
@@ -340,7 +342,9 @@ describe('ServiceVisibleRoleTcpController', () => {
         serviceId: 'service-123',
         roleIds: [],
       };
-      serviceVisibleRoleService.assignMultipleRoles.mockResolvedValue(mockServiceVisibleRoleBatchResult);
+      serviceVisibleRoleService.assignMultipleRoles.mockResolvedValue(
+        mockServiceVisibleRoleBatchResult
+      );
 
       // When
       const result = await controller.assignMultipleRoles(emptyBatchData);

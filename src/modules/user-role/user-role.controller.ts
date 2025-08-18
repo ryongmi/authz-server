@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 
 import { Serialize } from '@krgeobuk/core/decorators';
+import { SERVICE_CONSTANTS, GLOBAL_ROLES } from '@krgeobuk/core/constants';
 import {
   SwaggerApiTags,
   SwaggerApiOperation,
@@ -22,7 +23,8 @@ import {
 } from '@krgeobuk/swagger/decorators';
 import { AccessTokenGuard } from '@krgeobuk/jwt/guards';
 import { AuthorizationGuard } from '@krgeobuk/authorization/guards';
-import { RequireRole } from '@krgeobuk/authorization/decorators';
+import { RequireAccess } from '@krgeobuk/authorization/decorators';
+import { AUTHZ_PERMISSIONS } from '@krgeobuk/authorization/constants';
 import { UserIdParamsDto } from '@krgeobuk/shared/user/dtos';
 import { RoleIdParamsDto } from '@krgeobuk/shared/role/dtos';
 import { UserRoleParamsDto } from '@krgeobuk/shared/user-role/dtos';
@@ -62,7 +64,12 @@ export class UserRoleController {
     status: UserRoleError.FETCH_ERROR.statusCode,
     description: UserRoleError.FETCH_ERROR.message,
   })
-  @RequireRole('superAdmin')
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.USER_ROLE_MANAGE],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     ...UserRoleResponse.FETCH_SUCCESS,
   })
@@ -91,7 +98,12 @@ export class UserRoleController {
     status: UserRoleError.FETCH_ERROR.statusCode,
     description: UserRoleError.FETCH_ERROR.message,
   })
-  @RequireRole('superAdmin')
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.USER_ROLE_MANAGE],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     ...UserRoleResponse.FETCH_SUCCESS,
   })
@@ -125,7 +137,12 @@ export class UserRoleController {
     status: UserRoleError.FETCH_ERROR.statusCode,
     description: UserRoleError.FETCH_ERROR.message,
   })
-  @RequireRole('superAdmin')
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.USER_ROLE_MANAGE],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     ...UserRoleResponse.FETCH_SUCCESS,
   })
@@ -165,7 +182,12 @@ export class UserRoleController {
     status: UserRoleError.USER_ROLE_ALREADY_EXISTS.statusCode,
     description: UserRoleError.USER_ROLE_ALREADY_EXISTS.message,
   })
-  @RequireRole('superAdmin')
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.USER_ROLE_MANAGE],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     ...UserRoleResponse.ASSIGN_SUCCESS,
   })
@@ -203,7 +225,12 @@ export class UserRoleController {
     status: UserRoleError.REVOKE_ERROR.statusCode,
     description: UserRoleError.REVOKE_ERROR.message,
   })
-  @RequireRole('superAdmin')
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.USER_ROLE_MANAGE],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   async revokeUserRole(@Param() params: UserRoleParamsDto): Promise<void> {
     await this.userRoleService.revokeUserRole(params);
   }
@@ -234,7 +261,12 @@ export class UserRoleController {
     status: UserRoleError.ASSIGN_MULTIPLE_ERROR.statusCode,
     description: UserRoleError.ASSIGN_MULTIPLE_ERROR.message,
   })
-  @RequireRole('superAdmin')
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.USER_ROLE_MANAGE],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     ...UserRoleResponse.ASSIGN_MULTIPLE_SUCCESS,
   })
@@ -272,7 +304,12 @@ export class UserRoleController {
     status: UserRoleError.REVOKE_MULTIPLE_ERROR.statusCode,
     description: UserRoleError.REVOKE_MULTIPLE_ERROR.message,
   })
-  @RequireRole('superAdmin')
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.USER_ROLE_MANAGE],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     ...UserRoleResponse.REVOKE_MULTIPLE_SUCCESS,
   })
@@ -310,7 +347,12 @@ export class UserRoleController {
     status: UserRoleError.REPLACE_ERROR.statusCode,
     description: UserRoleError.REPLACE_ERROR.message,
   })
-  @RequireRole('superAdmin')
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.USER_ROLE_MANAGE],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     ...UserRoleResponse.REPLACE_SUCCESS,
   })

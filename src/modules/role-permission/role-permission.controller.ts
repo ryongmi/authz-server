@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 
 import { Serialize } from '@krgeobuk/core/decorators';
+import { SERVICE_CONSTANTS, GLOBAL_ROLES } from '@krgeobuk/core/constants';
 import {
   SwaggerApiTags,
   SwaggerApiOperation,
@@ -22,7 +23,8 @@ import {
 } from '@krgeobuk/swagger/decorators';
 import { AccessTokenGuard } from '@krgeobuk/jwt/guards';
 import { AuthorizationGuard } from '@krgeobuk/authorization/guards';
-import { RequireRole } from '@krgeobuk/authorization/decorators';
+import { RequireAccess } from '@krgeobuk/authorization/decorators';
+import { AUTHZ_PERMISSIONS } from '@krgeobuk/authorization/constants';
 import { RoleIdParamsDto } from '@krgeobuk/shared/role/dtos';
 import { PermissionIdParamsDto } from '@krgeobuk/shared/permission';
 import { RolePermissionParamsDto } from '@krgeobuk/shared/role-permission';
@@ -62,7 +64,12 @@ export class RolePermissionController {
     status: RolePermissionError.FETCH_ERROR.statusCode,
     description: RolePermissionError.FETCH_ERROR.message,
   })
-  @RequireRole('superAdmin')
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.ROLE_PERMISSION_MANAGE],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     ...RolePermissionResponse.FETCH_SUCCESS,
   })
@@ -91,7 +98,12 @@ export class RolePermissionController {
     status: RolePermissionError.FETCH_ERROR.statusCode,
     description: RolePermissionError.FETCH_ERROR.message,
   })
-  @RequireRole('superAdmin')
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.ROLE_PERMISSION_MANAGE],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     ...RolePermissionResponse.FETCH_SUCCESS,
   })
@@ -125,7 +137,12 @@ export class RolePermissionController {
     status: RolePermissionError.FETCH_ERROR.statusCode,
     description: RolePermissionError.FETCH_ERROR.message,
   })
-  @RequireRole('superAdmin')
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.ROLE_PERMISSION_MANAGE],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     ...RolePermissionResponse.FETCH_SUCCESS,
   })
@@ -165,7 +182,12 @@ export class RolePermissionController {
     status: RolePermissionError.ROLE_PERMISSION_ALREADY_EXISTS.statusCode,
     description: RolePermissionError.ROLE_PERMISSION_ALREADY_EXISTS.message,
   })
-  @RequireRole('superAdmin')
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.ROLE_PERMISSION_MANAGE],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     ...RolePermissionResponse.ASSIGN_SUCCESS,
   })
@@ -203,7 +225,12 @@ export class RolePermissionController {
     status: RolePermissionError.REVOKE_ERROR.statusCode,
     description: RolePermissionError.REVOKE_ERROR.message,
   })
-  @RequireRole('superAdmin')
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.ROLE_PERMISSION_MANAGE],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   async revokeRolePermission(@Param() params: RolePermissionParamsDto): Promise<void> {
     await this.rolePermissionService.revokeRolePermission(params);
   }
@@ -234,7 +261,12 @@ export class RolePermissionController {
     status: RolePermissionError.ASSIGN_MULTIPLE_ERROR.statusCode,
     description: RolePermissionError.ASSIGN_MULTIPLE_ERROR.message,
   })
-  @RequireRole('superAdmin')
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.ROLE_PERMISSION_MANAGE],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     ...RolePermissionResponse.ASSIGN_MULTIPLE_SUCCESS,
   })
@@ -272,7 +304,12 @@ export class RolePermissionController {
     status: RolePermissionError.REVOKE_MULTIPLE_ERROR.statusCode,
     description: RolePermissionError.REVOKE_MULTIPLE_ERROR.message,
   })
-  @RequireRole('superAdmin')
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.ROLE_PERMISSION_MANAGE],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     ...RolePermissionResponse.REVOKE_MULTIPLE_SUCCESS,
   })
@@ -310,7 +347,12 @@ export class RolePermissionController {
     status: RolePermissionError.REPLACE_ERROR.statusCode,
     description: RolePermissionError.REPLACE_ERROR.message,
   })
-  @RequireRole('superAdmin')
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.ROLE_PERMISSION_MANAGE],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     ...RolePermissionResponse.REPLACE_SUCCESS,
   })

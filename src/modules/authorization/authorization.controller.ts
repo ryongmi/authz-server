@@ -1,4 +1,13 @@
-import { Body, Controller, Get, HttpCode, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+  UseGuards,
+  ForbiddenException,
+} from '@nestjs/common';
 
 import {
   SwaggerApiTags,
@@ -10,6 +19,13 @@ import {
   SwaggerApiErrorResponse,
 } from '@krgeobuk/swagger/decorators';
 import { AccessTokenGuard } from '@krgeobuk/jwt/guards';
+import { AuthorizationGuard } from '@krgeobuk/authorization/guards';
+import { RequireAccess } from '@krgeobuk/authorization/decorators';
+import { AUTHZ_PERMISSIONS } from '@krgeobuk/authorization/constants';
+import { CurrentJwt } from '@krgeobuk/jwt/decorators';
+import { GLOBAL_ROLES, isAdminLevelRole } from '@krgeobuk/core/constants';
+import { SERVICE_CONSTANTS } from '@krgeobuk/core/constants';
+import type { AuthenticatedJwt } from '@krgeobuk/jwt/interfaces';
 import { Serialize } from '@krgeobuk/core/decorators';
 import { AuthorizationResponse } from '@krgeobuk/authorization/response';
 import { AuthorizationError } from '@krgeobuk/authorization/exception';
@@ -21,6 +37,7 @@ import { AuthorizationService } from './authorization.service.js';
 
 @SwaggerApiTags({ tags: ['authorization'] })
 @SwaggerApiBearerAuth()
+@UseGuards(AccessTokenGuard, AuthorizationGuard)
 @Controller('authorization')
 export class AuthorizationController {
   constructor(private readonly authorizationService: AuthorizationService) {}
@@ -46,12 +63,28 @@ export class AuthorizationController {
     status: AuthorizationError.SERVICE_UNAVAILABLE.statusCode,
     description: AuthorizationError.SERVICE_UNAVAILABLE.message,
   })
-  @UseGuards(AccessTokenGuard)
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.AUTHORIZATION_CHECK],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     dto: PermissionCheckResponseDto,
     ...AuthorizationResponse.CHECK_PERMISSION_SUCCESS,
   })
-  async checkPermission(@Body() dto: CheckPermissionDto): Promise<PermissionCheckResponseDto> {
+  async checkPermission(
+    @Body() dto: CheckPermissionDto,
+    @CurrentJwt() jwt: AuthenticatedJwt
+  ): Promise<PermissionCheckResponseDto> {
+    // 본인의 권한 확인이거나 관리자인 경우만 허용
+    if (dto.userId !== jwt.userId) {
+      // 본인이 아닌 경우 관리자 권한 확인
+      const userRoles = await this.authorizationService.getUserRoles(jwt.userId);
+      if (!userRoles.some((role) => isAdminLevelRole(role))) {
+        throw new ForbiddenException('본인의 권한만 확인할 수 있습니다.');
+      }
+    }
     const hasPermission = await this.authorizationService.checkUserPermission(dto);
 
     return { hasPermission };
@@ -76,12 +109,28 @@ export class AuthorizationController {
     status: AuthorizationError.SERVICE_UNAVAILABLE.statusCode,
     description: AuthorizationError.SERVICE_UNAVAILABLE.message,
   })
-  @UseGuards(AccessTokenGuard)
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.AUTHORIZATION_CHECK],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     dto: RoleCheckResponseDto,
     ...AuthorizationResponse.CHECK_ROLE_SUCCESS,
   })
-  async checkRole(@Body() dto: CheckRoleDto): Promise<RoleCheckResponseDto> {
+  async checkRole(
+    @Body() dto: CheckRoleDto,
+    @CurrentJwt() jwt: AuthenticatedJwt
+  ): Promise<RoleCheckResponseDto> {
+    // 본인의 역할 확인이거나 관리자인 경우만 허용
+    if (dto.userId !== jwt.userId) {
+      // 본인이 아닌 경우 관리자 권한 확인
+      const userRoles = await this.authorizationService.getUserRoles(jwt.userId);
+      if (!userRoles.some((role) => isAdminLevelRole(role))) {
+        throw new ForbiddenException('본인의 역할만 확인할 수 있습니다.');
+      }
+    }
     const hasRole = await this.authorizationService.checkUserRole(dto);
 
     return { hasRole };
@@ -111,7 +160,12 @@ export class AuthorizationController {
     status: AuthorizationError.SERVICE_UNAVAILABLE.statusCode,
     description: AuthorizationError.SERVICE_UNAVAILABLE.message,
   })
-  @UseGuards(AccessTokenGuard)
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.AUTHORIZATION_MANAGE],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     ...AuthorizationResponse.GET_USER_PERMISSIONS_SUCCESS,
   })
@@ -141,7 +195,12 @@ export class AuthorizationController {
     status: AuthorizationError.SERVICE_UNAVAILABLE.statusCode,
     description: AuthorizationError.SERVICE_UNAVAILABLE.message,
   })
-  @UseGuards(AccessTokenGuard)
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.AUTHORIZATION_MANAGE],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     ...AuthorizationResponse.GET_USER_ROLES_SUCCESS,
   })
@@ -149,4 +208,3 @@ export class AuthorizationController {
     return this.authorizationService.getUserRoles(params.userId);
   }
 }
-

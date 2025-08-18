@@ -160,7 +160,9 @@ describe('PermissionTcpController', () => {
       // Then
       expect(result).toEqual(mockPermissionEntity);
       expect(permissionService.findById).toHaveBeenCalledWith('permission-123');
-      expect(mockLogger.debug).toHaveBeenCalledWith('TCP permission detail request: permission-123');
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        'TCP permission detail request: permission-123'
+      );
     });
 
     it('권한이 존재하지 않으면 null을 반환해야 함', async () => {
@@ -193,10 +195,9 @@ describe('PermissionTcpController', () => {
       // Then
       expect(result).toEqual(mockPermissions);
       expect(permissionService.findByServiceIds).toHaveBeenCalledWith(['service-1', 'service-2']);
-      expect(mockLogger.debug).toHaveBeenCalledWith(
-        'TCP permissions by services request',
-        { serviceCount: 2 }
-      );
+      expect(mockLogger.debug).toHaveBeenCalledWith('TCP permissions by services request', {
+        serviceCount: 2,
+      });
     });
   });
 

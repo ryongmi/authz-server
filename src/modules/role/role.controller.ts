@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 
 import { Serialize } from '@krgeobuk/core/decorators';
+import { SERVICE_CONSTANTS, GLOBAL_ROLES } from '@krgeobuk/core/constants';
 import {
   SwaggerApiTags,
   SwaggerApiOperation,
@@ -24,7 +25,8 @@ import {
 } from '@krgeobuk/swagger/decorators';
 import { AccessTokenGuard } from '@krgeobuk/jwt/guards';
 import { AuthorizationGuard } from '@krgeobuk/authorization/guards';
-import { RequireRole } from '@krgeobuk/authorization/decorators';
+import { RequireAccess } from '@krgeobuk/authorization/decorators';
+import { AUTHZ_PERMISSIONS, AUTHZ_ROLES } from '@krgeobuk/authorization/constants';
 import { RoleResponse } from '@krgeobuk/role/response';
 import { RoleError } from '@krgeobuk/role/exception';
 import { RoleIdParamsDto } from '@krgeobuk/shared/role/dtos';
@@ -61,7 +63,12 @@ export class RoleController {
     status: RoleError.ROLE_FETCH_ERROR.statusCode,
     description: RoleError.ROLE_FETCH_ERROR.message,
   })
-  @RequireRole('superAdmin')
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.ROLE_READ],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN, AUTHZ_ROLES.ROLE_MANAGER],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     dto: RolePaginatedSearchResultDto,
     ...RoleResponse.FETCH_SUCCESS,
@@ -86,7 +93,12 @@ export class RoleController {
     status: RoleError.ROLE_ALREADY_EXISTS.statusCode,
     description: RoleError.ROLE_ALREADY_EXISTS.message,
   })
-  @RequireRole('superAdmin')
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.ROLE_CREATE],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     ...RoleResponse.CREATE_SUCCESS,
   })
@@ -116,7 +128,12 @@ export class RoleController {
     status: RoleError.ROLE_FETCH_ERROR.statusCode,
     description: RoleError.ROLE_FETCH_ERROR.message,
   })
-  @RequireRole('superAdmin')
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.ROLE_READ],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN, AUTHZ_ROLES.ROLE_MANAGER],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     dto: RoleDetailDto,
     ...RoleResponse.FETCH_SUCCESS,
@@ -147,7 +164,12 @@ export class RoleController {
     status: RoleError.ROLE_UPDATE_ERROR.statusCode,
     description: RoleError.ROLE_UPDATE_ERROR.message,
   })
-  @RequireRole('superAdmin')
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.ROLE_UPDATE],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     ...RoleResponse.UPDATE_SUCCESS,
   })
@@ -179,7 +201,12 @@ export class RoleController {
     status: RoleError.ROLE_DELETE_ERROR.statusCode,
     description: RoleError.ROLE_DELETE_ERROR.message,
   })
-  @RequireRole('superAdmin')
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.ROLE_DELETE],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     ...RoleResponse.DELETE_SUCCESS,
   })

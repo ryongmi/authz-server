@@ -11,4 +11,3 @@ export class ServiceVisibleRoleEntity {
   @PrimaryColumn({ type: 'uuid' })
   roleId!: string;
 }
-

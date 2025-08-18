@@ -393,9 +393,7 @@ describe('RoleService', () => {
       roleRepo.saveEntity.mockRejectedValue(new Error('DB Error'));
 
       // When & Then
-      await expect(service.createRole(createDto)).rejects.toThrow(
-        RoleException.roleCreateError()
-      );
+      await expect(service.createRole(createDto)).rejects.toThrow(RoleException.roleCreateError());
       expect(mockLogger.error).toHaveBeenCalledWith('역할 생성 실패', expect.any(Object));
     });
   });
@@ -497,9 +495,7 @@ describe('RoleService', () => {
       userRoleService.hasUsersForRole.mockResolvedValue(true);
 
       // When & Then
-      await expect(service.deleteRole('role-123')).rejects.toThrow(
-        RoleException.roleDeleteError()
-      );
+      await expect(service.deleteRole('role-123')).rejects.toThrow(RoleException.roleDeleteError());
       expect(mockLogger.warn).toHaveBeenCalledWith(
         '역할 삭제 실패: 역할에 할당된 사용자가 있음',
         expect.any(Object)

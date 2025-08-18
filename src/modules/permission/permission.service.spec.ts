@@ -3,10 +3,7 @@ import { Logger } from '@nestjs/common';
 
 import { UpdateResult } from 'typeorm';
 
-import type {
-  CreatePermission,
-  UpdatePermission,
-} from '@krgeobuk/permission/interfaces';
+import type { CreatePermission, UpdatePermission } from '@krgeobuk/permission/interfaces';
 import { PermissionException } from '@krgeobuk/permission/exception';
 
 import { RolePermissionService } from '@modules/role-permission/index.js';
@@ -27,7 +24,6 @@ interface MockRoleService {
   findByIds: jest.Mock;
 }
 
-
 describe('PermissionService', () => {
   let service: PermissionService;
   let permissionRepo: jest.Mocked<PermissionRepository>;
@@ -45,7 +41,6 @@ describe('PermissionService', () => {
     updatedAt: new Date(),
     deletedAt: null,
   };
-
 
   beforeEach(async () => {
     const mockPermissionRepo = {
@@ -66,7 +61,6 @@ describe('PermissionService', () => {
     const mockRoleService: MockRoleService = {
       findByIds: jest.fn(),
     };
-
 
     const mockLoggerInstance = {
       debug: jest.fn(),
@@ -357,4 +351,3 @@ describe('PermissionService', () => {
     });
   });
 });
-

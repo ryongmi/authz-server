@@ -178,4 +178,3 @@ describe('PermissionController', () => {
     expect(controller).toBeDefined();
   });
 });
-

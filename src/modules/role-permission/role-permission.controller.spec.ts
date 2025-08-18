@@ -301,7 +301,9 @@ describe('RolePermissionController', () => {
   describe('assignMultiplePermissions', () => {
     it('여러 권한 할당을 성공적으로 수행해야 함', async () => {
       // Given
-      mockRolePermissionService.assignMultiplePermissions.mockResolvedValue(mockBatchAssignmentResult);
+      mockRolePermissionService.assignMultiplePermissions.mockResolvedValue(
+        mockBatchAssignmentResult
+      );
 
       // When
       await controller.assignMultiplePermissions(mockRoleIdParams, mockPermissionIdsDto);
@@ -477,7 +479,9 @@ describe('RolePermissionController', () => {
       mockRolePermissionService.exists.mockResolvedValue(false);
       mockRolePermissionService.assignRolePermission.mockResolvedValue(undefined);
       mockRolePermissionService.revokeRolePermission.mockResolvedValue(undefined);
-      mockRolePermissionService.assignMultiplePermissions.mockResolvedValue(mockBatchAssignmentResult);
+      mockRolePermissionService.assignMultiplePermissions.mockResolvedValue(
+        mockBatchAssignmentResult
+      );
       mockRolePermissionService.revokeMultiplePermissions.mockResolvedValue(undefined);
       mockRolePermissionService.replaceRolePermissions.mockResolvedValue(undefined);
 

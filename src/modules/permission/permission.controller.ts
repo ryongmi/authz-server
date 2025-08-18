@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 
 import { Serialize } from '@krgeobuk/core/decorators';
+import { SERVICE_CONSTANTS, GLOBAL_ROLES } from '@krgeobuk/core/constants';
 import {
   SwaggerApiTags,
   SwaggerApiOperation,
@@ -24,7 +25,8 @@ import {
 } from '@krgeobuk/swagger/decorators';
 import { AccessTokenGuard } from '@krgeobuk/jwt/guards';
 import { AuthorizationGuard } from '@krgeobuk/authorization/guards';
-import { RequireRole } from '@krgeobuk/authorization/decorators';
+import { RequireAccess } from '@krgeobuk/authorization/decorators';
+import { AUTHZ_PERMISSIONS, AUTHZ_ROLES } from '@krgeobuk/authorization/constants';
 import { PermissionResponse } from '@krgeobuk/permission/response';
 import { PermissionError } from '@krgeobuk/permission/exception';
 import { PermissionIdParamsDto } from '@krgeobuk/shared/permission';
@@ -61,7 +63,12 @@ export class PermissionController {
     status: PermissionError.PERMISSION_FETCH_ERROR.statusCode,
     description: PermissionError.PERMISSION_FETCH_ERROR.message,
   })
-  @RequireRole('superAdmin')
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.PERMISSION_READ],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN, AUTHZ_ROLES.PERMISSION_MANAGER],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     dto: PermissionPaginatedSearchResultDto,
     ...PermissionResponse.FETCH_SUCCESS,
@@ -88,7 +95,12 @@ export class PermissionController {
     status: PermissionError.PERMISSION_ALREADY_EXISTS.statusCode,
     description: PermissionError.PERMISSION_ALREADY_EXISTS.message,
   })
-  @RequireRole('superAdmin')
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.PERMISSION_CREATE],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     ...PermissionResponse.CREATE_SUCCESS,
   })
@@ -118,7 +130,12 @@ export class PermissionController {
     status: PermissionError.PERMISSION_FETCH_ERROR.statusCode,
     description: PermissionError.PERMISSION_FETCH_ERROR.message,
   })
-  @RequireRole('superAdmin')
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.PERMISSION_READ],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN, AUTHZ_ROLES.PERMISSION_MANAGER],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     dto: PermissionDetailDto,
     ...PermissionResponse.FETCH_SUCCESS,
@@ -149,7 +166,12 @@ export class PermissionController {
     status: PermissionError.PERMISSION_UPDATE_ERROR.statusCode,
     description: PermissionError.PERMISSION_UPDATE_ERROR.message,
   })
-  @RequireRole('superAdmin')
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.PERMISSION_UPDATE],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     ...PermissionResponse.UPDATE_SUCCESS,
   })
@@ -181,7 +203,12 @@ export class PermissionController {
     status: PermissionError.PERMISSION_DELETE_ERROR.statusCode,
     description: PermissionError.PERMISSION_DELETE_ERROR.message,
   })
-  @RequireRole('superAdmin')
+  @RequireAccess({
+    permissions: [AUTHZ_PERMISSIONS.PERMISSION_DELETE],
+    roles: [GLOBAL_ROLES.SUPER_ADMIN],
+    combinationOperator: 'OR',
+    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
+  })
   @Serialize({
     ...PermissionResponse.DELETE_SUCCESS,
   })
