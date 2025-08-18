@@ -1,25 +1,34 @@
 import { Global, Module } from '@nestjs/common';
-import { ClientsModule, Transport } from '@nestjs/microservices';
+import { ClientOptions, ClientsModule, Transport } from '@nestjs/microservices';
+import { ConfigService } from '@nestjs/config';
+
+import { ClientConfig } from '@common/interfaces/config.interfaces.js';
 
 @Global()
 @Module({
   imports: [
-    ClientsModule.register([
+    ClientsModule.registerAsync([
       {
         name: 'AUTH_SERVICE',
-        transport: Transport.TCP,
-        options: {
-          host: 'auth-server',
-          port: 8010,
-        },
+        inject: [ConfigService],
+        useFactory: (configService: ConfigService): ClientOptions => ({
+          transport: Transport.TCP,
+          options: {
+            host: configService.get<ClientConfig['authServiceHost']>('client.authServiceHost')!,
+            port: configService.get<ClientConfig['authServicePort']>('client.authServicePort')!,
+          },
+        }),
       },
       {
         name: 'PORTAL_SERVICE',
-        transport: Transport.TCP,
-        options: {
-          host: 'portal-server',
-          port: 8210,
-        },
+        inject: [ConfigService],
+        useFactory: (configService: ConfigService): ClientOptions => ({
+          transport: Transport.TCP,
+          options: {
+            host: configService.get<ClientConfig['portalServiceHost']>('client.portalServiceHost')!,
+            port: configService.get<ClientConfig['portalServicePort']>('client.portalServicePort')!,
+          },
+        }),
       },
     ]),
   ],

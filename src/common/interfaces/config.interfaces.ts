@@ -36,6 +36,13 @@ export interface NaverConfig {
   userInfoUrl: string | undefined;
 }
 
+export interface ClientConfig {
+  authServiceHost: string | undefined;
+  authServicePort: number | undefined;
+  portalServiceHost: string | undefined;
+  portalServicePort: number | undefined;
+}
+
 export interface JwtConfig {
   accessPrivateKey: string | undefined;
   accessPublicKey: string | undefined;
