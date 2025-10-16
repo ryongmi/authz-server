@@ -1,3 +1,5 @@
+import type { StringValue } from 'ms';
+
 export interface DefaultConfig {
   mode: 'local' | 'development' | 'production' | undefined;
   port: number | undefined;
@@ -48,8 +50,8 @@ export interface JwtConfig {
   accessPublicKey: string | undefined;
   refreshPrivateKey: string | undefined;
   refreshPublicKey: string | undefined;
-  accessExpiresIn: string | undefined;
-  refreshExpiresIn: string | undefined;
+  accessExpiresIn: StringValue | undefined;
+  refreshExpiresIn: StringValue | undefined;
   sessionCookiePath: string | undefined;
   refreshMaxAge: number | undefined;
   refreshStore: string | undefined;
