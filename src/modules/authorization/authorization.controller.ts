@@ -67,7 +67,6 @@ export class AuthorizationController {
     permissions: [AUTHZ_PERMISSIONS.AUTHORIZATION_CHECK],
     roles: [GLOBAL_ROLES.SUPER_ADMIN],
     combinationOperator: 'OR',
-    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
   })
   @Serialize({
     dto: PermissionCheckResponseDto,
@@ -113,7 +112,6 @@ export class AuthorizationController {
     permissions: [AUTHZ_PERMISSIONS.AUTHORIZATION_CHECK],
     roles: [GLOBAL_ROLES.SUPER_ADMIN],
     combinationOperator: 'OR',
-    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
   })
   @Serialize({
     dto: RoleCheckResponseDto,
@@ -164,7 +162,6 @@ export class AuthorizationController {
     permissions: [AUTHZ_PERMISSIONS.AUTHORIZATION_MANAGE],
     roles: [GLOBAL_ROLES.SUPER_ADMIN],
     combinationOperator: 'OR',
-    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
   })
   @Serialize({
     ...AuthorizationResponse.GET_USER_PERMISSIONS_SUCCESS,
@@ -199,7 +196,6 @@ export class AuthorizationController {
     permissions: [AUTHZ_PERMISSIONS.AUTHORIZATION_MANAGE],
     roles: [GLOBAL_ROLES.SUPER_ADMIN],
     combinationOperator: 'OR',
-    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
   })
   @Serialize({
     ...AuthorizationResponse.GET_USER_ROLES_SUCCESS,

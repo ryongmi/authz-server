@@ -68,7 +68,6 @@ export class RolePermissionController {
     permissions: [AUTHZ_PERMISSIONS.ROLE_PERMISSION_MANAGE],
     roles: [GLOBAL_ROLES.SUPER_ADMIN],
     combinationOperator: 'OR',
-    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
   })
   @Serialize({
     ...RolePermissionResponse.FETCH_SUCCESS,
@@ -102,7 +101,6 @@ export class RolePermissionController {
     permissions: [AUTHZ_PERMISSIONS.ROLE_PERMISSION_MANAGE],
     roles: [GLOBAL_ROLES.SUPER_ADMIN],
     combinationOperator: 'OR',
-    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
   })
   @Serialize({
     ...RolePermissionResponse.FETCH_SUCCESS,
@@ -141,7 +139,6 @@ export class RolePermissionController {
     permissions: [AUTHZ_PERMISSIONS.ROLE_PERMISSION_MANAGE],
     roles: [GLOBAL_ROLES.SUPER_ADMIN],
     combinationOperator: 'OR',
-    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
   })
   @Serialize({
     ...RolePermissionResponse.FETCH_SUCCESS,
@@ -186,7 +183,6 @@ export class RolePermissionController {
     permissions: [AUTHZ_PERMISSIONS.ROLE_PERMISSION_MANAGE],
     roles: [GLOBAL_ROLES.SUPER_ADMIN],
     combinationOperator: 'OR',
-    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
   })
   @Serialize({
     ...RolePermissionResponse.ASSIGN_SUCCESS,
@@ -229,7 +225,6 @@ export class RolePermissionController {
     permissions: [AUTHZ_PERMISSIONS.ROLE_PERMISSION_MANAGE],
     roles: [GLOBAL_ROLES.SUPER_ADMIN],
     combinationOperator: 'OR',
-    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
   })
   async revokeRolePermission(@Param() params: RolePermissionParamsDto): Promise<void> {
     await this.rolePermissionService.revokeRolePermission(params);
@@ -265,7 +260,6 @@ export class RolePermissionController {
     permissions: [AUTHZ_PERMISSIONS.ROLE_PERMISSION_MANAGE],
     roles: [GLOBAL_ROLES.SUPER_ADMIN],
     combinationOperator: 'OR',
-    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
   })
   @Serialize({
     ...RolePermissionResponse.ASSIGN_MULTIPLE_SUCCESS,
@@ -308,7 +302,6 @@ export class RolePermissionController {
     permissions: [AUTHZ_PERMISSIONS.ROLE_PERMISSION_MANAGE],
     roles: [GLOBAL_ROLES.SUPER_ADMIN],
     combinationOperator: 'OR',
-    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
   })
   @Serialize({
     ...RolePermissionResponse.REVOKE_MULTIPLE_SUCCESS,
@@ -351,7 +344,6 @@ export class RolePermissionController {
     permissions: [AUTHZ_PERMISSIONS.ROLE_PERMISSION_MANAGE],
     roles: [GLOBAL_ROLES.SUPER_ADMIN],
     combinationOperator: 'OR',
-    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
   })
   @Serialize({
     ...RolePermissionResponse.REPLACE_SUCCESS,

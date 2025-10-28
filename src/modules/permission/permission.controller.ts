@@ -67,7 +67,6 @@ export class PermissionController {
     permissions: [AUTHZ_PERMISSIONS.PERMISSION_READ],
     roles: [GLOBAL_ROLES.SUPER_ADMIN, AUTHZ_ROLES.PERMISSION_MANAGER],
     combinationOperator: 'OR',
-    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
   })
   @Serialize({
     dto: PermissionPaginatedSearchResultDto,
@@ -99,7 +98,6 @@ export class PermissionController {
     permissions: [AUTHZ_PERMISSIONS.PERMISSION_CREATE],
     roles: [GLOBAL_ROLES.SUPER_ADMIN],
     combinationOperator: 'OR',
-    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
   })
   @Serialize({
     ...PermissionResponse.CREATE_SUCCESS,
@@ -134,7 +132,6 @@ export class PermissionController {
     permissions: [AUTHZ_PERMISSIONS.PERMISSION_READ],
     roles: [GLOBAL_ROLES.SUPER_ADMIN, AUTHZ_ROLES.PERMISSION_MANAGER],
     combinationOperator: 'OR',
-    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
   })
   @Serialize({
     dto: PermissionDetailDto,
@@ -170,7 +167,6 @@ export class PermissionController {
     permissions: [AUTHZ_PERMISSIONS.PERMISSION_UPDATE],
     roles: [GLOBAL_ROLES.SUPER_ADMIN],
     combinationOperator: 'OR',
-    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
   })
   @Serialize({
     ...PermissionResponse.UPDATE_SUCCESS,
@@ -207,7 +203,6 @@ export class PermissionController {
     permissions: [AUTHZ_PERMISSIONS.PERMISSION_DELETE],
     roles: [GLOBAL_ROLES.SUPER_ADMIN],
     combinationOperator: 'OR',
-    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
   })
   @Serialize({
     ...PermissionResponse.DELETE_SUCCESS,

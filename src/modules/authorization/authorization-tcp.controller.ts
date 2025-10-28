@@ -7,6 +7,8 @@ import {
   TcpCheckRole,
   TcpGetUserRoles,
   TcpGetUserPermissions,
+  TcpGetUserRoleNames,
+  TcpGetUserPermissionActions,
 } from '@krgeobuk/authorization/tcp';
 import { PermissionCheckResponse, RoleCheckResponse } from '@krgeobuk/shared/authorization';
 import type { Service } from '@krgeobuk/shared/service';
@@ -132,6 +134,68 @@ export class AuthorizationTcpController {
       return roles;
     } catch (error: unknown) {
       this.logger.error('TCP user roles retrieval failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId: data.userId,
+        serviceId: data.serviceId,
+      });
+      throw error;
+    }
+  }
+
+  @MessagePattern(AuthorizationTcpPatterns.GET_USER_ROLE_NAMES)
+  async getUserRoleNames(@Payload() data: TcpGetUserRoleNames): Promise<string[]> {
+    try {
+      this.logger.debug('TCP user role names requested', {
+        userId: data.userId,
+        serviceId: data.serviceId,
+      });
+
+      const roleNames = await this.authorizationService.getUserRoleNames(
+        data.userId,
+        data.serviceId
+      );
+
+      this.logger.debug('TCP user role names retrieved', {
+        userId: data.userId,
+        serviceId: data.serviceId,
+        roleNameCount: roleNames.length,
+      });
+
+      return roleNames;
+    } catch (error: unknown) {
+      this.logger.error('TCP user role names retrieval failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId: data.userId,
+        serviceId: data.serviceId,
+      });
+      throw error;
+    }
+  }
+
+  @MessagePattern(AuthorizationTcpPatterns.GET_USER_PERMISSION_ACTIONS)
+  async getUserPermissionActions(
+    @Payload() data: TcpGetUserPermissionActions
+  ): Promise<string[]> {
+    try {
+      this.logger.debug('TCP user permission actions requested', {
+        userId: data.userId,
+        serviceId: data.serviceId,
+      });
+
+      const actions = await this.authorizationService.getUserPermissionActions(
+        data.userId,
+        data.serviceId
+      );
+
+      this.logger.debug('TCP user permission actions retrieved', {
+        userId: data.userId,
+        serviceId: data.serviceId,
+        actionCount: actions.length,
+      });
+
+      return actions;
+    } catch (error: unknown) {
+      this.logger.error('TCP user permission actions retrieval failed', {
         error: error instanceof Error ? error.message : 'Unknown error',
         userId: data.userId,
         serviceId: data.serviceId,

@@ -355,7 +355,7 @@ export class AuthorizationService {
   }
 
   /**
-   * 사용자의 모든 역할 목록 조회
+   * 사용자의 모든 역할 목록 조회 (ID 배열)
    *
    * @param userId - 사용자 ID
    * @param serviceId - 서비스 ID (옵션)
@@ -391,6 +391,92 @@ export class AuthorizationService {
       return visibleRoleIds;
     } catch (error: unknown) {
       this.logger.error('User roles retrieval failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId,
+        serviceId,
+      });
+
+      return [];
+    }
+  }
+
+  /**
+   * 사용자의 모든 역할 이름 목록 조회 (Name 배열)
+   *
+   * @param userId - 사용자 ID
+   * @param serviceId - 서비스 ID (옵션)
+   * @returns 역할 이름 목록
+   */
+  async getUserRoleNames(userId: string, serviceId?: string): Promise<string[]> {
+    try {
+      this.logger.debug('User role names requested', { userId, serviceId });
+
+      // 1. 역할 ID 목록 조회
+      const roleIds = await this.getUserRoles(userId, serviceId);
+
+      if (roleIds.length === 0) {
+        return [];
+      }
+
+      // 2. 역할 엔티티 배치 조회
+      const roles = await this.roleService.findByIds(roleIds);
+
+      // 3. 역할 이름만 추출
+      const roleNames = roles.map((role) => role.name);
+
+      this.logger.debug('User role names retrieved', {
+        userId,
+        serviceId,
+        roleNameCount: roleNames.length,
+        roleNames,
+      });
+
+      return roleNames;
+    } catch (error: unknown) {
+      this.logger.error('User role names retrieval failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId,
+        serviceId,
+      });
+
+      return [];
+    }
+  }
+
+  /**
+   * 사용자의 모든 권한 액션 목록 조회 (Action 배열)
+   *
+   * @param userId - 사용자 ID
+   * @param serviceId - 서비스 ID (옵션)
+   * @returns 권한 액션 목록
+   */
+  async getUserPermissionActions(userId: string, serviceId?: string): Promise<string[]> {
+    try {
+      this.logger.debug('User permission actions requested', { userId, serviceId });
+
+      // 1. 권한 ID 목록 조회
+      const permissionIds = await this.getUserPermissions(userId, serviceId);
+
+      if (permissionIds.length === 0) {
+        return [];
+      }
+
+      // 2. 권한 엔티티 배치 조회
+      const permissions = await this.permissionService.findByIds(permissionIds);
+
+      // 3. 권한 액션만 추출 (중복 제거)
+      const uniqueActions = [...new Set(permissions.map((perm) => perm.action))];
+
+      this.logger.debug('User permission actions retrieved', {
+        userId,
+        serviceId,
+        permissionActionCount: uniqueActions.length,
+        actions: uniqueActions,
+      });
+
+      return uniqueActions;
+    } catch (error: unknown) {
+      this.logger.error('User permission actions retrieval failed', {
         error: error instanceof Error ? error.message : 'Unknown error',
         userId,
         serviceId,

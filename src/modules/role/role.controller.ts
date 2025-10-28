@@ -67,7 +67,6 @@ export class RoleController {
     permissions: [AUTHZ_PERMISSIONS.ROLE_READ],
     roles: [GLOBAL_ROLES.SUPER_ADMIN, AUTHZ_ROLES.ROLE_MANAGER],
     combinationOperator: 'OR',
-    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
   })
   @Serialize({
     dto: RolePaginatedSearchResultDto,
@@ -97,7 +96,6 @@ export class RoleController {
     permissions: [AUTHZ_PERMISSIONS.ROLE_CREATE],
     roles: [GLOBAL_ROLES.SUPER_ADMIN],
     combinationOperator: 'OR',
-    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
   })
   @Serialize({
     ...RoleResponse.CREATE_SUCCESS,
@@ -132,7 +130,6 @@ export class RoleController {
     permissions: [AUTHZ_PERMISSIONS.ROLE_READ],
     roles: [GLOBAL_ROLES.SUPER_ADMIN, AUTHZ_ROLES.ROLE_MANAGER],
     combinationOperator: 'OR',
-    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
   })
   @Serialize({
     dto: RoleDetailDto,
@@ -168,7 +165,6 @@ export class RoleController {
     permissions: [AUTHZ_PERMISSIONS.ROLE_UPDATE],
     roles: [GLOBAL_ROLES.SUPER_ADMIN],
     combinationOperator: 'OR',
-    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
   })
   @Serialize({
     ...RoleResponse.UPDATE_SUCCESS,
@@ -205,7 +201,6 @@ export class RoleController {
     permissions: [AUTHZ_PERMISSIONS.ROLE_DELETE],
     roles: [GLOBAL_ROLES.SUPER_ADMIN],
     combinationOperator: 'OR',
-    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
   })
   @Serialize({
     ...RoleResponse.DELETE_SUCCESS,

@@ -69,7 +69,6 @@ export class ServiceVisibleRoleController {
     permissions: [AUTHZ_PERMISSIONS.SERVICE_VISIBLE_ROLE_MANAGE],
     roles: [GLOBAL_ROLES.SUPER_ADMIN],
     combinationOperator: 'OR',
-    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
   })
   @Serialize({
     ...ServiceVisibleRoleResponse.FETCH_SUCCESS,
@@ -103,7 +102,6 @@ export class ServiceVisibleRoleController {
     permissions: [AUTHZ_PERMISSIONS.SERVICE_VISIBLE_ROLE_MANAGE],
     roles: [GLOBAL_ROLES.SUPER_ADMIN],
     combinationOperator: 'OR',
-    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
   })
   @Serialize({
     ...ServiceVisibleRoleResponse.FETCH_SUCCESS,
@@ -142,7 +140,6 @@ export class ServiceVisibleRoleController {
     permissions: [AUTHZ_PERMISSIONS.SERVICE_VISIBLE_ROLE_MANAGE],
     roles: [GLOBAL_ROLES.SUPER_ADMIN],
     combinationOperator: 'OR',
-    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
   })
   @Serialize({
     ...ServiceVisibleRoleResponse.FETCH_SUCCESS,
@@ -189,7 +186,6 @@ export class ServiceVisibleRoleController {
     permissions: [AUTHZ_PERMISSIONS.SERVICE_VISIBLE_ROLE_MANAGE],
     roles: [GLOBAL_ROLES.SUPER_ADMIN],
     combinationOperator: 'OR',
-    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
   })
   @Serialize({
     ...ServiceVisibleRoleResponse.ASSIGN_SUCCESS,
@@ -232,7 +228,6 @@ export class ServiceVisibleRoleController {
     permissions: [AUTHZ_PERMISSIONS.SERVICE_VISIBLE_ROLE_MANAGE],
     roles: [GLOBAL_ROLES.SUPER_ADMIN],
     combinationOperator: 'OR',
-    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
   })
   @Serialize({
     ...ServiceVisibleRoleResponse.REVOKE_SUCCESS,
@@ -271,7 +266,6 @@ export class ServiceVisibleRoleController {
     permissions: [AUTHZ_PERMISSIONS.SERVICE_VISIBLE_ROLE_MANAGE],
     roles: [GLOBAL_ROLES.SUPER_ADMIN],
     combinationOperator: 'OR',
-    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
   })
   @Serialize({
     ...ServiceVisibleRoleResponse.ASSIGN_MULTIPLE_SUCCESS,
@@ -314,7 +308,6 @@ export class ServiceVisibleRoleController {
     permissions: [AUTHZ_PERMISSIONS.SERVICE_VISIBLE_ROLE_MANAGE],
     roles: [GLOBAL_ROLES.SUPER_ADMIN],
     combinationOperator: 'OR',
-    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
   })
   @Serialize({
     ...ServiceVisibleRoleResponse.REVOKE_MULTIPLE_SUCCESS,
@@ -357,7 +350,6 @@ export class ServiceVisibleRoleController {
     permissions: [AUTHZ_PERMISSIONS.SERVICE_VISIBLE_ROLE_MANAGE],
     roles: [GLOBAL_ROLES.SUPER_ADMIN],
     combinationOperator: 'OR',
-    serviceId: SERVICE_CONSTANTS.AUTHZ_SERVICE.id,
   })
   @Serialize({
     ...ServiceVisibleRoleResponse.REPLACE_SUCCESS,
