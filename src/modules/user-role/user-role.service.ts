@@ -352,4 +352,152 @@ export class UserRoleService {
       throw UserRoleException.fetchError();
     }
   }
+
+  // ==================== 계정 병합 메서드 ====================
+
+  /**
+   * 사용자 역할 병합 (계정 병합용)
+   * sourceUserId의 모든 역할을 targetUserId로 이전 (UPDATE 방식)
+   */
+  async mergeUserRoles(sourceUserId: string, targetUserId: string): Promise<void> {
+    try {
+      this.logger.log('Starting user role merge', {
+        sourceUserId,
+        targetUserId,
+      });
+
+      // 1. source 사용자의 역할 조회
+      const sourceRoleIds = await this.getRoleIds(sourceUserId);
+
+      if (sourceRoleIds.length === 0) {
+        this.logger.warn('Source user has no roles to merge', {
+          sourceUserId,
+          targetUserId,
+        });
+        return;
+      }
+
+      // 2. target 사용자의 기존 역할 조회
+      const targetRoleIds = await this.getRoleIds(targetUserId);
+
+      // 3. 중복되지 않은 역할 (target으로 이전할 것)
+      const uniqueRoleIds = sourceRoleIds.filter((roleId) => !targetRoleIds.includes(roleId));
+
+      // 4. 중복되는 역할 (source에서 삭제할 것)
+      const duplicateRoleIds = sourceRoleIds.filter((roleId) => targetRoleIds.includes(roleId));
+
+      await this.userRoleRepo.manager.transaction(async (manager) => {
+        // 5. 중복되지 않은 역할을 target 사용자로 UPDATE (소유권 이전)
+        if (uniqueRoleIds.length > 0) {
+          await manager
+            .createQueryBuilder()
+            .update(UserRoleEntity)
+            .set({ userId: targetUserId })
+            .where('userId = :sourceUserId', { sourceUserId })
+            .andWhere('roleId IN (:...uniqueRoleIds)', { uniqueRoleIds })
+            .execute();
+        }
+
+        // 6. 중복되는 역할은 source에서 삭제
+        if (duplicateRoleIds.length > 0) {
+          await manager.delete(UserRoleEntity, {
+            userId: sourceUserId,
+            roleId: In(duplicateRoleIds),
+          });
+        }
+      });
+
+      this.logger.log('User roles merged successfully', {
+        sourceUserId,
+        targetUserId,
+        sourceRoleCount: sourceRoleIds.length,
+        targetRoleCount: targetRoleIds.length,
+        transferred: uniqueRoleIds.length,
+        duplicatesRemoved: duplicateRoleIds.length,
+      });
+    } catch (error: unknown) {
+      this.logger.error('User role merge failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        sourceUserId,
+        targetUserId,
+      });
+
+      throw UserRoleException.assignMultipleError();
+    }
+  }
+
+  /**
+   * 사용자 역할 병합 롤백 (보상 트랜잭션)
+   * 병합된 역할을 원래 사용자로 되돌림
+   *
+   * @param sourceUserId User B (원래 소유자)
+   * @param targetUserId User A (병합 대상)
+   * @param sourceRoleIds User B가 원래 가지고 있던 역할 목록
+   */
+  async rollbackMerge(
+    sourceUserId: string,
+    targetUserId: string,
+    sourceRoleIds: string[]
+  ): Promise<void> {
+    try {
+      this.logger.log('Starting user role merge rollback', {
+        sourceUserId,
+        targetUserId,
+        originalRoleCount: sourceRoleIds.length,
+      });
+
+      if (sourceRoleIds.length === 0) {
+        this.logger.warn('No roles to rollback', {
+          sourceUserId,
+          targetUserId,
+        });
+        return;
+      }
+
+      // 현재 target 사용자의 역할 조회
+      const currentTargetRoleIds = await this.getRoleIds(targetUserId);
+
+      await this.userRoleRepo.manager.transaction(async (manager) => {
+        // 1. target에 추가된 역할을 source로 되돌림
+        // sourceRoleIds 중 현재 target에 있는 역할만 되돌림
+        const rolesToRestore = sourceRoleIds.filter((roleId) =>
+          currentTargetRoleIds.includes(roleId)
+        );
+
+        if (rolesToRestore.length > 0) {
+          // target에서 해당 역할 제거
+          await manager.delete(UserRoleEntity, {
+            userId: targetUserId,
+            roleId: In(rolesToRestore),
+          });
+
+          // source에 역할 재할당
+          const entities = rolesToRestore.map((roleId) => {
+            const entity = new UserRoleEntity();
+            entity.userId = sourceUserId;
+            entity.roleId = roleId;
+            return entity;
+          });
+
+          await manager.save(UserRoleEntity, entities);
+        }
+      });
+
+      this.logger.log('User roles rollback completed successfully', {
+        sourceUserId,
+        targetUserId,
+        restoredCount: sourceRoleIds.filter((roleId) =>
+          currentTargetRoleIds.includes(roleId)
+        ).length,
+      });
+    } catch (error: unknown) {
+      this.logger.error('User role rollback failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        sourceUserId,
+        targetUserId,
+      });
+
+      throw UserRoleException.assignMultipleError();
+    }
+  }
 }
