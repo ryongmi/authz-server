@@ -25,6 +25,7 @@ export interface RedisConfig {
   host: string | undefined;
   port: number | undefined;
   password: string | undefined;
+  keyPrefix: string | undefined;
 }
 
 export interface JwtConfig {
