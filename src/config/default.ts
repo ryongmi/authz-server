@@ -7,6 +7,7 @@ export default (): DefaultConfig => {
     return {
       mode: undefined,
       port: parseInt(process.env.PORT ?? '8100', 10),
+      tcpPort: parseInt(process.env.TCP_PORT ?? '8110', 10),
       corsOrigins: process.env.CORS_ORIGINS,
     };
   }
@@ -14,6 +15,7 @@ export default (): DefaultConfig => {
   return {
     mode,
     port: parseInt(process.env.PORT ?? '8100', 10),
+    tcpPort: parseInt(process.env.TCP_PORT ?? '8110', 10),
     corsOrigins: process.env.CORS_ORIGINS,
   };
 };
